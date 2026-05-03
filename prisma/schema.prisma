@@ -1,0 +1,97 @@
+// Local-first SQLite schema for expense & financial planning
+
+generator client {
+  provider = "prisma-client"
+  output   = "../app/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+enum TransactionKind {
+  INCOME
+  EXPENSE
+}
+
+model AppSettings {
+  id String @id @default("default")
+
+  baseCurrency  String  @default("USD")
+  quoteCurrency String  @default("EUR")
+  /// How many quote-currency units equal 1 base unit (e.g. 1 USD = 18.5 MXN)
+  quotePerBase Decimal @default(1)
+
+  /// Starting point for forecast (stored in base currency)
+  currentBalanceBase Decimal @default(0)
+
+  /// Rolling monthly figures for forecast (base currency)
+  monthlyIncomeBase     Decimal @default(0)
+  monthlyDeductionsBase Decimal @default(0)
+
+  updatedAt DateTime @updatedAt
+}
+
+model Category {
+  id       String            @id @default(cuid())
+  name     String
+  kind     TransactionKind
+  color    String?           @default("#6366f1")
+  position Int               @default(0)
+  transactions Transaction[]
+
+  @@unique([name, kind])
+}
+
+model Tag {
+  id           String           @id @default(cuid())
+  name         String           @unique
+  transactions TransactionTag[]
+}
+
+model Transaction {
+  id          String            @id @default(cuid())
+  occurredAt  DateTime
+  kind        TransactionKind
+  description String            @default("")
+  categoryId  String?
+  category    Category?         @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+
+  amountOriginal Decimal
+  currencyCode   String
+  /// Units of base per 1 unit of original (multiply by amountOriginal → base)
+  rateToBase     Decimal
+  amountBase     Decimal
+  /// Units of quote per 1 unit of original
+  rateToQuote    Decimal
+  amountQuote    Decimal
+
+  tags TransactionTag[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([occurredAt])
+  @@index([kind])
+}
+
+model TransactionTag {
+  transactionId String
+  tagId         String
+  transaction   Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  tag           Tag         @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([transactionId, tagId])
+}
+
+model SavingsGoal {
+  id          String  @id @default(cuid())
+  name        String
+  targetBase  Decimal?
+  balanceBase Decimal  @default(0)
+  color       String?  @default("#22c55e")
+  notes       String?
+  position    Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
