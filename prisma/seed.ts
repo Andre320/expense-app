@@ -15,6 +15,10 @@ async function main() {
       currentBalanceBase: "12500",
       monthlyIncomeBase: "8200",
       monthlyDeductionsBase: "5400",
+      crCrcPerUsd: "505",
+      crSolidaristaPct: "0",
+      crPensionComplementariaPct: "0",
+      crEsppPct: "0",
     },
     update: {},
   });
@@ -26,6 +30,12 @@ async function main() {
     { name: "Food", kind: "EXPENSE" as const, position: 2, color: "#fb923c" },
     { name: "Transport", kind: "EXPENSE" as const, position: 3, color: "#a78bfa" },
     { name: "Subscriptions", kind: "EXPENSE" as const, position: 4, color: "#94a3b8" },
+    {
+      name: "Uncategorized",
+      kind: "EXPENSE" as const,
+      position: 99,
+      color: "#71717a",
+    },
   ];
 
   for (const c of defaults) {
@@ -40,10 +50,10 @@ async function main() {
     await prisma.savingsGoal.create({
       data: {
         name: "Emergency fund",
-        targetBase: "20000",
-        balanceBase: "8500",
+        targetAmount: "20000",
+        currentAmount: "8500",
         color: "#34d399",
-        position: 1,
+        priorityOrder: 1,
       },
     });
   }

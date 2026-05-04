@@ -1,14 +1,11 @@
 import { NextResponse } from "next/server";
 import { ensureAppDefaults, prisma } from "@/lib/db";
-import { serializeSavings } from "@/lib/serialize";
+import { createSavingsGoal, listSerializedSavingsGoals } from "@/lib/services/savings.service";
 import { savingsCreateZ } from "@/lib/validators";
 
 export async function GET() {
   await ensureAppDefaults();
-  const goals = await prisma.savingsGoal.findMany({
-    orderBy: [{ position: "asc" }, { name: "asc" }],
-  });
-  return NextResponse.json(goals.map(serializeSavings));
+  return NextResponse.json(await listSerializedSavingsGoals(prisma));
 }
 
 export async function POST(req: Request) {
@@ -21,19 +18,6 @@ export async function POST(req: Request) {
       { status: 400 },
     );
   }
-  const d = parsed.data;
-  const maxPos = await prisma.savingsGoal.aggregate({ _max: { position: true } });
-  const position = (maxPos._max.position ?? 0) + 1;
-  const created = await prisma.savingsGoal.create({
-    data: {
-      name: d.name,
-      targetBase:
-        d.targetBase == null ? null : String(d.targetBase),
-      balanceBase: String(d.balanceBase ?? 0),
-      color: d.color,
-      notes: d.notes,
-      position,
-    },
-  });
-  return NextResponse.json(serializeSavings(created), { status: 201 });
+  const created = await createSavingsGoal(prisma, parsed.data);
+  return NextResponse.json(created, { status: 201 });
 }

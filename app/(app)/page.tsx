@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
 import {
   Bar,
@@ -11,8 +12,20 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { ForecastMilestones } from "@/components/forecast-milestones";
+import { MetricStat } from "@/components/patterns/metric-stat";
+import { PageIntro } from "@/components/patterns/page-intro";
+import { RecentLedger } from "@/components/recent-ledger";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  monthlySurplusForForecast,
+  savingsGoalMilestones,
+  type SavingsGoalForecastInput,
+} from "@/lib/forecast-planning";
+import { rechartsTooltipContentStyle } from "@/lib/chart-style";
+import { formatMoneyBase } from "@/lib/format-money";
 
 type Summary = {
   monthly: { month: string; income: number; expense: number }[];
@@ -34,12 +47,10 @@ async function fetchSummary(): Promise<Summary> {
   return res.json();
 }
 
-function fmt(n: number, currency: string) {
-  return new Intl.NumberFormat(undefined, {
-    style: "currency",
-    currency,
-    maximumFractionDigits: 0,
-  }).format(n);
+async function fetchGoals(): Promise<SavingsGoalForecastInput[]> {
+  const res = await fetch("/api/savings");
+  if (!res.ok) throw new Error("goals");
+  return res.json();
 }
 
 export default function DashboardPage() {
@@ -47,11 +58,13 @@ export default function DashboardPage() {
     queryKey: ["analytics", "summary"],
     queryFn: fetchSummary,
   });
+  const { data: goals } = useQuery({
+    queryKey: ["savings"],
+    queryFn: fetchGoals,
+  });
 
   if (isPending) {
-    return (
-      <div className="text-sm text-[var(--muted-fg)]">Loading command center…</div>
-    );
+    return <div className="text-sm text-[var(--muted-fg)]">Loading dashboard…</div>;
   }
   if (isError || !data) {
     return (
@@ -73,45 +86,86 @@ export default function DashboardPage() {
         data.monthly[data.monthly.length - 1]!.expense
       : 0;
 
+  const surplus = monthlySurplusForForecast(
+    data.settings.monthlyIncomeBase,
+    data.burnRate3Mo,
+  );
+  const milestones =
+    goals && goals.length ? savingsGoalMilestones(goals, surplus) : [];
+
   return (
-    <div className="space-y-8">
-      <header className="space-y-1">
-        <h1 className="text-2xl font-semibold tracking-tight">Command center</h1>
-        <p className="max-w-2xl text-sm text-[var(--muted-fg)]">
-          Burn rate, cash flow, and savings in {bc}. Rates and forecast inputs live in
-          Settings.
-        </p>
-      </header>
+    <div className="space-y-10">
+      <PageIntro
+        eyebrow="Overview"
+        title="Dashboard"
+        description={`Cash flow, planned surplus, savings timeline, and recent ledger entries in ${bc}.`}
+        actions={
+          <>
+            <Button variant="outline" size="sm" asChild>
+              <Link href="/planner">Planner</Link>
+            </Button>
+            <Button variant="outline" size="sm" asChild>
+              <Link href="/activity">Activity</Link>
+            </Button>
+          </>
+        }
+      />
+
+      <Card className="border-dashed border-[var(--border)] bg-[var(--muted)]/10">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base">Planned surplus</CardTitle>
+          <CardDescription>
+            Expected net income (Settings /{" "}
+            <Link href="/planner" className="underline-offset-2 hover:underline">
+              Planner
+            </Link>
+            ) minus trailing 3-month average expenses from the ledger.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
+          <MetricStat
+            label="Expected monthly income"
+            labelClassName="text-xs font-normal normal-case tracking-normal"
+            value={formatMoneyBase(data.settings.monthlyIncomeBase, bc)}
+            valueClassName="text-xl font-semibold tabular-nums"
+          />
+          <MetricStat
+            label="Avg monthly expenses (3 mo)"
+            labelClassName="text-xs font-normal normal-case tracking-normal"
+            value={formatMoneyBase(data.burnRate3Mo, bc)}
+            valueClassName="text-xl font-semibold tabular-nums text-[var(--muted-fg)]"
+          />
+          <div className="flex items-center gap-2">
+            <Badge variant={surplus >= 0 ? "success" : "danger"}>
+              Surplus {formatMoneyBase(surplus, bc)}
+            </Badge>
+          </div>
+        </CardContent>
+      </Card>
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Card>
           <CardHeader className="pb-2">
             <CardDescription>Current balance</CardDescription>
             <CardTitle className="text-xl tabular-nums">
-              {fmt(data.settings.currentBalanceBase, bc)}
+              {formatMoneyBase(data.settings.currentBalanceBase, bc)}
             </CardTitle>
           </CardHeader>
-          <CardContent className="text-xs text-[var(--muted-fg)]">
-            Base currency ({bc})
-          </CardContent>
+          <CardContent className="text-xs text-[var(--muted-fg)]">Base ({bc})</CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
             <CardDescription>3-mo avg spend</CardDescription>
             <CardTitle className="text-xl tabular-nums">
-              {fmt(data.burnRate3Mo, bc)}
+              {formatMoneyBase(data.burnRate3Mo, bc)}
             </CardTitle>
           </CardHeader>
-          <CardContent className="text-xs text-[var(--muted-fg)]">
-            Monthly expense burn
-          </CardContent>
+          <CardContent className="text-xs text-[var(--muted-fg)]">Ledger burn rate</CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
             <CardDescription>Last month net</CardDescription>
-            <CardTitle className="text-xl tabular-nums">
-              {fmt(netLast, bc)}
-            </CardTitle>
+            <CardTitle className="text-xl tabular-nums">{formatMoneyBase(netLast, bc)}</CardTitle>
           </CardHeader>
           <CardContent className="flex items-center gap-2">
             <Badge variant={netLast >= 0 ? "success" : "danger"}>
@@ -121,13 +175,38 @@ export default function DashboardPage() {
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardDescription>Savings goals</CardDescription>
+            <CardDescription>Savings (current)</CardDescription>
             <CardTitle className="text-xl tabular-nums">
-              {fmt(data.savingsTotal, bc)}
+              {formatMoneyBase(data.savingsTotal, bc)}
             </CardTitle>
           </CardHeader>
-          <CardContent className="text-xs text-[var(--muted-fg)]">
-            Total across goals
+          <CardContent className="text-xs text-[var(--muted-fg)]">Across goals</CardContent>
+        </Card>
+      </div>
+
+      <div className="grid gap-8 lg:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle>Savings forecast</CardTitle>
+            <CardDescription>
+              Sequential funding by priority. Tune income and goals in the planner.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ForecastMilestones
+              milestones={milestones}
+              monthlySurplusBase={surplus}
+              baseCurrency={bc}
+            />
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle>Recent ledger</CardTitle>
+            <CardDescription>Latest movements — open full table to edit.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <RecentLedger baseCurrency={bc} />
           </CardContent>
         </Card>
       </div>
@@ -135,11 +214,9 @@ export default function DashboardPage() {
       <Card>
         <CardHeader>
           <CardTitle>Income vs expenses</CardTitle>
-          <CardDescription>
-            Monthly totals in {bc} — trailing twelve months
-          </CardDescription>
+          <CardDescription>Monthly totals in {bc} — trailing twelve months</CardDescription>
         </CardHeader>
-        <CardContent className="h-[320px] pt-2">
+        <CardContent className="h-[300px] pt-2">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={chartData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#27272a" vertical={false} />
@@ -150,12 +227,7 @@ export default function DashboardPage() {
                 tickFormatter={(v) => `${v >= 1000 ? `${(v / 1000).toFixed(0)}k` : v}`}
               />
               <Tooltip
-                contentStyle={{
-                  background: "#18181b",
-                  border: "1px solid #27272a",
-                  borderRadius: 8,
-                  fontSize: 12,
-                }}
+                contentStyle={rechartsTooltipContentStyle}
                 labelFormatter={(_, p) => {
                   const pl = p?.[0]?.payload as { month?: string } | undefined;
                   return pl?.month ?? "";

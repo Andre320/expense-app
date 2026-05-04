@@ -32,7 +32,13 @@ export async function POST(req: Request) {
     }
 
     let categoryId: string | null = null;
-    if (row.categoryName?.trim()) {
+    if (row.categoryId?.trim()) {
+      const byId = await prisma.category.findFirst({
+        where: { id: row.categoryId.trim(), kind: row.kind },
+      });
+      categoryId = byId?.id ?? null;
+    }
+    if (!categoryId && row.categoryName?.trim()) {
       const cat = await prisma.category.findFirst({
         where: {
           name: { equals: row.categoryName.trim() },
