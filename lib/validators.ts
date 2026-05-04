@@ -23,12 +23,17 @@ export const settingsPatchZ = z.object({
   currentBalanceBase: z.number().optional(),
   monthlyIncomeBase: z.number().optional(),
   monthlyDeductionsBase: z.number().optional(),
+  crCrcPerUsd: z.number().positive().optional(),
+  crSolidaristaPct: z.number().min(0).max(100).optional(),
+  crPensionComplementariaPct: z.number().min(0).max(100).optional(),
+  crEsppPct: z.number().min(0).max(100).optional(),
 });
 
 export const savingsCreateZ = z.object({
   name: z.string().min(1),
-  targetBase: z.number().nonnegative().nullable().optional(),
-  balanceBase: z.number().nonnegative().optional(),
+  targetAmount: z.number().nonnegative().nullable().optional(),
+  currentAmount: z.number().nonnegative().optional(),
+  priorityOrder: z.number().int().min(0).optional(),
   color: z.string().optional(),
   notes: z.string().optional(),
 });
@@ -42,8 +47,25 @@ export const csvImportRowZ = z.object({
   amountOriginal: z.number().positive(),
   currencyCode: z.string().min(3).max(3),
   categoryName: z.string().optional(),
+  categoryId: z.string().optional(),
 });
 
 export const csvImportZ = z.object({
   rows: z.array(csvImportRowZ).min(1).max(5000),
 });
+
+export const knownStoreCreateZ = z.object({
+  pattern: z.string().min(1).max(128),
+  displayName: z.string().min(1).max(256),
+  categoryId: z.string().min(1),
+});
+
+export const knownStoreUpdateZ = knownStoreCreateZ.partial();
+
+export const categoryCreateZ = z.object({
+  name: z.string().min(1).max(128),
+  kind: transactionKindZ,
+  color: z.string().max(32).optional(),
+});
+
+export const categoryUpdateZ = categoryCreateZ.partial();

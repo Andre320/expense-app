@@ -22,11 +22,11 @@ export async function PATCH(req: Request, ctx: Ctx) {
       where: { id },
       data: {
         ...(d.name != null && { name: d.name }),
-        ...(d.targetBase !== undefined && {
-          targetBase:
-            d.targetBase == null ? null : String(d.targetBase),
+        ...(d.targetAmount !== undefined && {
+          targetAmount: d.targetAmount == null ? null : String(d.targetAmount),
         }),
-        ...(d.balanceBase != null && { balanceBase: String(d.balanceBase) }),
+        ...(d.currentAmount != null && { currentAmount: String(d.currentAmount) }),
+        ...(d.priorityOrder !== undefined && { priorityOrder: d.priorityOrder }),
         ...(d.color !== undefined && { color: d.color }),
         ...(d.notes !== undefined && { notes: d.notes }),
       },

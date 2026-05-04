@@ -39,6 +39,10 @@ export function serializeSettings(s: {
   currentBalanceBase: unknown;
   monthlyIncomeBase: unknown;
   monthlyDeductionsBase: unknown;
+  crCrcPerUsd: unknown;
+  crSolidaristaPct: unknown;
+  crPensionComplementariaPct: unknown;
+  crEsppPct: unknown;
   updatedAt: Date;
 }) {
   return {
@@ -49,6 +53,10 @@ export function serializeSettings(s: {
     currentBalanceBase: numFromDecimal(s.currentBalanceBase),
     monthlyIncomeBase: numFromDecimal(s.monthlyIncomeBase),
     monthlyDeductionsBase: numFromDecimal(s.monthlyDeductionsBase),
+    crCrcPerUsd: numFromDecimal(s.crCrcPerUsd),
+    crSolidaristaPct: numFromDecimal(s.crSolidaristaPct),
+    crPensionComplementariaPct: numFromDecimal(s.crPensionComplementariaPct),
+    crEsppPct: numFromDecimal(s.crEsppPct),
     updatedAt: s.updatedAt.toISOString(),
   };
 }
@@ -57,11 +65,11 @@ export function serializeSavings(g: SavingsGoal) {
   return {
     id: g.id,
     name: g.name,
-    targetBase: g.targetBase == null ? null : numFromDecimal(g.targetBase),
-    balanceBase: numFromDecimal(g.balanceBase),
+    targetAmount: g.targetAmount == null ? null : numFromDecimal(g.targetAmount),
+    currentAmount: numFromDecimal(g.currentAmount),
     color: g.color,
     notes: g.notes,
-    position: g.position,
+    priorityOrder: g.priorityOrder,
     createdAt: g.createdAt.toISOString(),
     updatedAt: g.updatedAt.toISOString(),
   };
