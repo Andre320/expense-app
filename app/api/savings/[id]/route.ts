@@ -1,34 +1,31 @@
-import { NextResponse } from "next/server";
-import { ensureAppDefaults, prisma } from "@/lib/db";
-import { serializeSavings } from "@/lib/serialize";
-import { applySavingsGoalMovement } from "@/lib/services/savings-movement.service";
-import { numFromDecimal } from "@/lib/utils";
-import { savingsUpdateZ } from "@/lib/validators";
+import { NextResponse } from "next/server"
+import { ensureAppDefaults, prisma } from "@/lib/db"
+import { serializeSavings } from "@/lib/serialize"
+import { applySavingsGoalMovement } from "@/lib/services/savings-movement.service"
+import { numFromDecimal } from "@/lib/utils"
+import { savingsUpdateZ } from "@/lib/validators"
 
-type Ctx = { params: Promise<{ id: string }> };
+type Ctx = { params: Promise<{ id: string }> }
 
 export async function PATCH(req: Request, ctx: Ctx) {
-  await ensureAppDefaults();
-  const { id } = await ctx.params;
-  const json = await req.json().catch(() => null);
-  const parsed = savingsUpdateZ.safeParse(json);
+  await ensureAppDefaults()
+  const { id } = await ctx.params
+  const json = await req.json().catch(() => null)
+  const parsed = savingsUpdateZ.safeParse(json)
   if (!parsed.success) {
-    return NextResponse.json(
-      { error: parsed.error.flatten() },
-      { status: 400 },
-    );
+    return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })
   }
-  const d = parsed.data;
+  const d = parsed.data
   try {
     if (d.currentAmount != null) {
-      const goal = await prisma.savingsGoal.findUniqueOrThrow({ where: { id } });
-      const current = numFromDecimal(goal.currentAmount);
+      const goal = await prisma.savingsGoal.findUniqueOrThrow({ where: { id } })
+      const current = numFromDecimal(goal.currentAmount)
       if (d.currentAmount !== current) {
         await applySavingsGoalMovement(prisma, id, {
           kind: "ADJUSTMENT",
           amount: d.currentAmount,
           description: "Balance correction",
-        });
+        })
       }
     }
 
@@ -43,20 +40,20 @@ export async function PATCH(req: Request, ctx: Ctx) {
         ...(d.color !== undefined && { color: d.color }),
         ...(d.notes !== undefined && { notes: d.notes }),
       },
-    });
-    return NextResponse.json(serializeSavings(updated));
+    })
+    return NextResponse.json(serializeSavings(updated))
   } catch {
-    return NextResponse.json({ error: "Not found" }, { status: 404 });
+    return NextResponse.json({ error: "Not found" }, { status: 404 })
   }
 }
 
 export async function DELETE(_req: Request, ctx: Ctx) {
-  await ensureAppDefaults();
-  const { id } = await ctx.params;
+  await ensureAppDefaults()
+  const { id } = await ctx.params
   try {
-    await prisma.savingsGoal.delete({ where: { id } });
+    await prisma.savingsGoal.delete({ where: { id } })
   } catch {
-    return NextResponse.json({ error: "Not found" }, { status: 404 });
+    return NextResponse.json({ error: "Not found" }, { status: 404 })
   }
-  return new NextResponse(null, { status: 204 });
+  return new NextResponse(null, { status: 204 })
 }

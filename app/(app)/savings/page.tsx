@@ -1,69 +1,65 @@
-"use client";
+"use client"
 
-import Link from "next/link";
-import { useQuery } from "@tanstack/react-query";
-import { ForecastMilestones } from "@/components/forecast-milestones";
-import { MONTH_LABELS } from "@/components/income-bonuses-manager";
-import { MetricStat } from "@/components/patterns/metric-stat";
-import { PageIntro } from "@/components/patterns/page-intro";
-import { SavingsAccountsManager } from "@/components/savings-accounts-manager";
-import { SavingsGoalsManager } from "@/components/savings-goals-manager";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import Link from "next/link"
+import { useQuery } from "@tanstack/react-query"
+import { ForecastMilestones } from "@/components/forecast-milestones"
+import { MONTH_LABELS } from "@/components/income-bonuses-manager"
+import { MetricStat } from "@/components/patterns/metric-stat"
+import { PageIntro } from "@/components/patterns/page-intro"
+import { SavingsAccountsManager } from "@/components/savings-accounts-manager"
+import { SavingsGoalsManager } from "@/components/savings-goals-manager"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import {
   goalsForForecast,
   monthlySurplusForForecast,
   savingsGoalMilestones,
   type SavingsGoalForecastInput,
-} from "@/lib/forecast-planning";
-import { formatMoneyBase } from "@/lib/format-money";
-import { REPORTING_CURRENCY } from "@/lib/app-currency";
+} from "@/lib/forecast-planning"
+import { formatMoneyBase } from "@/lib/format-money"
+import { REPORTING_CURRENCY } from "@/lib/app-currency"
 
 async function fetchSummary() {
-  const res = await fetch("/api/analytics/summary");
-  if (!res.ok) throw new Error("summary");
+  const res = await fetch("/api/analytics/summary")
+  if (!res.ok) throw new Error("summary")
   return res.json() as Promise<{
-    burnRate3Mo: number;
-    expectedMonthlyIncomeBase: number;
-    reportingCurrency: string;
-    savingsAccountsTotal: number;
-    forecastCalendarMonth: number;
-    activeBonusesThisMonth: { name: string; grossAmountCrc: number }[];
-    settings: { crCrcPerUsd: number };
-  }>;
+    burnRate3Mo: number
+    expectedMonthlyIncomeBase: number
+    reportingCurrency: string
+    savingsAccountsTotal: number
+    forecastCalendarMonth: number
+    activeBonusesThisMonth: { name: string; grossAmountCrc: number }[]
+    settings: { crCrcPerUsd: number }
+  }>
 }
 
 async function fetchGoals(): Promise<SavingsGoalForecastInput[]> {
-  const res = await fetch("/api/savings");
-  if (!res.ok) throw new Error("goals");
-  return res.json();
+  const res = await fetch("/api/savings")
+  if (!res.ok) throw new Error("goals")
+  return res.json()
 }
 
 export default function SavingsPage() {
   const { data: summary } = useQuery({
     queryKey: ["analytics", "summary"],
     queryFn: fetchSummary,
-  });
+  })
   const { data: goals } = useQuery({
     queryKey: ["savings"],
     queryFn: fetchGoals,
-  });
+  })
 
-  const expectedIncome = summary?.expectedMonthlyIncomeBase ?? 0;
-  const burn = summary?.burnRate3Mo ?? 0;
+  const expectedIncome = summary?.expectedMonthlyIncomeBase ?? 0
+  const burn = summary?.burnRate3Mo ?? 0
   const surplus = monthlySurplusForForecast(
     Number.isFinite(expectedIncome) ? expectedIncome : 0,
     burn,
-  );
-  const crcPerUsd = summary?.settings.crCrcPerUsd ?? 505;
+  )
+  const crcPerUsd = summary?.settings.crCrcPerUsd ?? 505
   const milestones =
-    goals && goals.length
-      ? savingsGoalMilestones(goalsForForecast(goals, crcPerUsd), surplus)
-      : [];
-  const bc = summary?.reportingCurrency ?? REPORTING_CURRENCY;
+    goals && goals.length ? savingsGoalMilestones(goalsForForecast(goals, crcPerUsd), surplus) : []
+  const bc = summary?.reportingCurrency ?? REPORTING_CURRENCY
   const monthLabel =
-    summary?.forecastCalendarMonth != null
-      ? MONTH_LABELS[summary.forecastCalendarMonth - 1]
-      : null;
+    summary?.forecastCalendarMonth != null ? MONTH_LABELS[summary.forecastCalendarMonth - 1] : null
 
   return (
     <div className="space-y-10">
@@ -82,10 +78,7 @@ export default function SavingsPage() {
         }
       />
 
-      <SavingsAccountsManager
-        reportingCurrency={bc}
-        crcPerUsd={crcPerUsd}
-      />
+      <SavingsAccountsManager reportingCurrency={bc} crcPerUsd={crcPerUsd} />
 
       <div className="grid gap-10 xl:grid-cols-[1fr_minmax(280px,360px)]">
         <SavingsGoalsManager />
@@ -96,9 +89,9 @@ export default function SavingsPage() {
               <CardTitle className="text-base">Funding timeline</CardTitle>
               <CardDescription>
                 Based on surplus for {monthLabel ?? "this month"} (
-                {formatMoneyBase(expectedIncome, bc)} expected income −{" "}
-                {formatMoneyBase(burn, bc)} avg spend). USD goals are converted at{" "}
-                {crcPerUsd.toLocaleString()} CRC/USD. Lower priority number is funded first.
+                {formatMoneyBase(expectedIncome, bc)} expected income − {formatMoneyBase(burn, bc)}{" "}
+                avg spend). USD goals are converted at {crcPerUsd.toLocaleString()} CRC/USD. Lower
+                priority number is funded first.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
@@ -122,7 +115,7 @@ export default function SavingsPage() {
             </CardContent>
           </Card>
 
-          <p className="text-xs leading-relaxed text-muted-foreground">
+          <p className="text-muted-foreground text-xs leading-relaxed">
             Surplus comes from your salary profile and fixed bonuses on{" "}
             <Link href="/income" className="underline-offset-2 hover:underline">
               Income
@@ -132,5 +125,5 @@ export default function SavingsPage() {
         </div>
       </div>
     </div>
-  );
+  )
 }

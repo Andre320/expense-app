@@ -1,28 +1,28 @@
-import "server-only";
+import "server-only"
 
-import type { PrismaClient } from "@/app/generated/prisma/client";
-import { buildVestSchedule, summarizePlan, settleVestReceive, valuePlan } from "@/lib/rsu-vesting";
-import { serializeRsuPlan, serializeRsuVest } from "@/lib/serialize";
-import { getStockQuote } from "@/lib/services/stock-quote.service";
-import { numFromDecimal } from "@/lib/utils";
-import { rsuPlanCreateZ } from "@/lib/validators";
-import type { z } from "zod";
+import type { PrismaClient } from "@/app/generated/prisma/client"
+import { buildVestSchedule, summarizePlan, settleVestReceive, valuePlan } from "@/lib/rsu-vesting"
+import { serializeRsuPlan, serializeRsuVest } from "@/lib/serialize"
+import { getStockQuote } from "@/lib/services/stock-quote.service"
+import { numFromDecimal } from "@/lib/utils"
+import { rsuPlanCreateZ } from "@/lib/validators"
+import type { z } from "zod"
 
-type PlanCreate = z.infer<typeof rsuPlanCreateZ>;
+type PlanCreate = z.infer<typeof rsuPlanCreateZ>
 
 function parseGrantDate(value: string): Date {
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) throw new Error("Invalid grantDate");
-  return d;
+  const d = new Date(value)
+  if (Number.isNaN(d.getTime())) throw new Error("Invalid grantDate")
+  return d
 }
 
 function vestSummaryInput(v: {
-  sequence: number;
-  scheduledDate: Date;
-  shares: { toString(): string };
-  status: string;
-  netShares: { toString(): string } | null;
-  cashBonusUsd: { toString(): string } | null;
+  sequence: number
+  scheduledDate: Date
+  shares: { toString(): string }
+  status: string
+  netShares: { toString(): string } | null
+  cashBonusUsd: { toString(): string } | null
 }) {
   return {
     sequence: v.sequence,
@@ -31,7 +31,7 @@ function vestSummaryInput(v: {
     status: v.status as "PENDING" | "RECEIVED",
     netShares: v.netShares != null ? numFromDecimal(v.netShares) : null,
     cashBonusUsd: v.cashBonusUsd != null ? numFromDecimal(v.cashBonusUsd) : null,
-  };
+  }
 }
 
 export async function listRsuPlanSummaries(prisma: PrismaClient) {
@@ -40,57 +40,57 @@ export async function listRsuPlanSummaries(prisma: PrismaClient) {
     include: {
       vests: { orderBy: { sequence: "asc" } },
     },
-  });
+  })
 
   return Promise.all(
     plans.map(async (p) => {
-      const plan = serializeRsuPlan(p);
-      const vests = p.vests.map(serializeRsuVest);
+      const plan = serializeRsuPlan(p)
+      const vests = p.vests.map(serializeRsuVest)
       const summary = summarizePlan(
         { totalShares: plan.totalShares, ticker: plan.ticker },
         p.vests.map(vestSummaryInput),
-      );
-      const quote = await getStockQuote(plan.ticker);
+      )
+      const quote = await getStockQuote(plan.ticker)
       const valuation = valuePlan(
         { totalShares: plan.totalShares, ticker: plan.ticker },
         p.vests.map(vestSummaryInput),
         quote.available ? { priceUsd: quote.priceUsd!, asOf: quote.asOf! } : null,
         plan.taxWithholdPct,
-      );
-      return { plan, summary, quote, valuation };
+      )
+      return { plan, summary, quote, valuation }
     }),
-  );
+  )
 }
 
 export async function getRsuPlanDetail(prisma: PrismaClient, id: string) {
   const p = await prisma.rsuPlan.findUniqueOrThrow({
     where: { id },
     include: { vests: { orderBy: { sequence: "asc" } } },
-  });
+  })
 
-  const plan = serializeRsuPlan(p);
-  const vests = p.vests.map(serializeRsuVest);
-  const vestInputs = p.vests.map(vestSummaryInput);
+  const plan = serializeRsuPlan(p)
+  const vests = p.vests.map(serializeRsuVest)
+  const vestInputs = p.vests.map(vestSummaryInput)
 
-  const summary = summarizePlan({ totalShares: plan.totalShares, ticker: plan.ticker }, vestInputs);
-  const quote = await getStockQuote(plan.ticker);
+  const summary = summarizePlan({ totalShares: plan.totalShares, ticker: plan.ticker }, vestInputs)
+  const quote = await getStockQuote(plan.ticker)
   const valuation = valuePlan(
     { totalShares: plan.totalShares, ticker: plan.ticker },
     vestInputs,
     quote.available ? { priceUsd: quote.priceUsd!, asOf: quote.asOf! } : null,
     plan.taxWithholdPct,
-  );
+  )
 
-  return { plan, vests, summary, quote, valuation };
+  return { plan, vests, summary, quote, valuation }
 }
 
 export async function createRsuPlan(prisma: PrismaClient, d: PlanCreate) {
-  const grantDate = parseGrantDate(d.grantDate);
-  const vestingPeriodMonths = d.vestingPeriodMonths ?? 48;
-  const vestIntervalMonths = d.vestIntervalMonths ?? 3;
-  const vestDayOfMonth = d.vestDayOfMonth ?? 20;
-  const taxWithholdPct = d.taxWithholdPct ?? 20;
-  const ticker = d.ticker.trim().toUpperCase();
+  const grantDate = parseGrantDate(d.grantDate)
+  const vestingPeriodMonths = d.vestingPeriodMonths ?? 48
+  const vestIntervalMonths = d.vestIntervalMonths ?? 3
+  const vestDayOfMonth = d.vestDayOfMonth ?? 20
+  const taxWithholdPct = d.taxWithholdPct ?? 20
+  const ticker = d.ticker.trim().toUpperCase()
 
   const schedule = buildVestSchedule({
     grantDate,
@@ -98,10 +98,10 @@ export async function createRsuPlan(prisma: PrismaClient, d: PlanCreate) {
     vestingPeriodMonths,
     vestIntervalMonths,
     vestDayOfMonth,
-  });
+  })
 
-  const maxPos = await prisma.rsuPlan.aggregate({ _max: { position: true } });
-  const position = d.position ?? (maxPos._max.position ?? 0) + 1;
+  const maxPos = await prisma.rsuPlan.aggregate({ _max: { position: true } })
+  const position = d.position ?? (maxPos._max.position ?? 0) + 1
 
   const created = await prisma.$transaction(async (tx) => {
     const plan = await tx.rsuPlan.create({
@@ -117,7 +117,7 @@ export async function createRsuPlan(prisma: PrismaClient, d: PlanCreate) {
         notes: d.notes,
         position,
       },
-    });
+    })
 
     for (const row of schedule) {
       await tx.rsuVest.create({
@@ -128,13 +128,13 @@ export async function createRsuPlan(prisma: PrismaClient, d: PlanCreate) {
           shares: String(row.shares),
           status: "PENDING",
         },
-      });
+      })
     }
 
-    return plan;
-  });
+    return plan
+  })
 
-  return getRsuPlanDetail(prisma, created.id);
+  return getRsuPlanDetail(prisma, created.id)
 }
 
 export async function updateRsuPlan(
@@ -150,20 +150,20 @@ export async function updateRsuPlan(
       ...(d.notes !== undefined && { notes: d.notes }),
       ...(d.position != null && { position: d.position }),
     },
-  });
-  return getRsuPlanDetail(prisma, id);
+  })
+  return getRsuPlanDetail(prisma, id)
 }
 
 export async function deleteRsuPlan(prisma: PrismaClient, id: string) {
-  await prisma.rsuPlan.delete({ where: { id } });
+  await prisma.rsuPlan.delete({ where: { id } })
 }
 
 export async function listRsuVests(prisma: PrismaClient, planId: string) {
   const rows = await prisma.rsuVest.findMany({
     where: { planId },
     orderBy: { sequence: "asc" },
-  });
-  return rows.map(serializeRsuVest);
+  })
+  return rows.map(serializeRsuVest)
 }
 
 export async function receiveRsuVest(
@@ -172,24 +172,24 @@ export async function receiveRsuVest(
   vestId: string,
   receivedAt?: string,
 ) {
-  const plan = await prisma.rsuPlan.findUniqueOrThrow({ where: { id: planId } });
+  const plan = await prisma.rsuPlan.findUniqueOrThrow({ where: { id: planId } })
   const vest = await prisma.rsuVest.findFirstOrThrow({
     where: { id: vestId, planId },
-  });
+  })
 
   if (vest.status === "RECEIVED") {
-    throw new Error("Vest already received");
+    throw new Error("Vest already received")
   }
 
-  const shares = numFromDecimal(vest.shares);
-  const taxPct = numFromDecimal(plan.taxWithholdPct);
-  const quote = await getStockQuote(plan.ticker);
+  const shares = numFromDecimal(vest.shares)
+  const taxPct = numFromDecimal(plan.taxWithholdPct)
+  const quote = await getStockQuote(plan.ticker)
   if (!quote.available || quote.priceUsd == null || quote.priceUsd <= 0) {
-    throw new Error(quote.error ?? "Stock quote required to mark vest received");
+    throw new Error(quote.error ?? "Stock quote required to mark vest received")
   }
 
-  const settlement = settleVestReceive(shares, taxPct, quote.priceUsd);
-  const when = receivedAt ? parseGrantDate(receivedAt) : new Date();
+  const settlement = settleVestReceive(shares, taxPct, quote.priceUsd)
+  const when = receivedAt ? parseGrantDate(receivedAt) : new Date()
 
   await prisma.rsuVest.update({
     where: { id: vestId },
@@ -198,21 +198,20 @@ export async function receiveRsuVest(
       receivedAt: when,
       sharesWithheld: String(settlement.sharesWithheld),
       netShares: String(settlement.netWholeShares),
-      cashBonusUsd:
-        settlement.cashBonusUsd > 0 ? String(settlement.cashBonusUsd) : null,
+      cashBonusUsd: settlement.cashBonusUsd > 0 ? String(settlement.cashBonusUsd) : null,
     },
-  });
+  })
 
-  return getRsuPlanDetail(prisma, planId);
+  return getRsuPlanDetail(prisma, planId)
 }
 
 export async function undoRsuVestReceive(prisma: PrismaClient, planId: string, vestId: string) {
   const vest = await prisma.rsuVest.findFirstOrThrow({
     where: { id: vestId, planId },
-  });
+  })
 
   if (vest.status !== "RECEIVED") {
-    throw new Error("Vest is not received");
+    throw new Error("Vest is not received")
   }
 
   await prisma.rsuVest.update({
@@ -224,7 +223,7 @@ export async function undoRsuVestReceive(prisma: PrismaClient, planId: string, v
       netShares: null,
       cashBonusUsd: null,
     },
-  });
+  })
 
-  return getRsuPlanDetail(prisma, planId);
+  return getRsuPlanDetail(prisma, planId)
 }

@@ -1,4 +1,4 @@
-"use client";
+"use client"
 
 import {
   flexRender,
@@ -6,20 +6,20 @@ import {
   useReactTable,
   type ColumnDef,
   type SortingState,
-} from "@tanstack/react-table";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { format } from "date-fns";
-import { Trash2 } from "lucide-react";
-import * as React from "react";
-import { useForm, useWatch } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { toast } from "sonner";
-import { z } from "zod";
-import { FormSelect } from "@/components/form-select";
-import { PageIntro } from "@/components/patterns/page-intro";
-import { SELECT_NONE } from "@/components/select-field";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+} from "@tanstack/react-table"
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { format } from "date-fns"
+import { Trash2 } from "lucide-react"
+import * as React from "react"
+import { useForm, useWatch } from "react-hook-form"
+import { zodResolver } from "@hookform/resolvers/zod"
+import { toast } from "sonner"
+import { z } from "zod"
+import { FormSelect } from "@/components/form-select"
+import { PageIntro } from "@/components/patterns/page-intro"
+import { SELECT_NONE } from "@/components/select-field"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import {
   Form,
   FormControl,
@@ -27,10 +27,10 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import { SelectField } from "@/components/select-field";
-import { Skeleton } from "@/components/ui/skeleton";
+} from "@/components/ui/form"
+import { Input } from "@/components/ui/input"
+import { SelectField } from "@/components/select-field"
+import { Skeleton } from "@/components/ui/skeleton"
 import {
   Table,
   TableBody,
@@ -38,23 +38,23 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
-import { QUOTE_CURRENCY, REPORTING_CURRENCY } from "@/lib/app-currency";
+} from "@/components/ui/table"
+import { Badge } from "@/components/ui/badge"
+import { QUOTE_CURRENCY, REPORTING_CURRENCY } from "@/lib/app-currency"
 
-type Category = { id: string; name: string; kind: "INCOME" | "EXPENSE" };
+type Category = { id: string; name: string; kind: "INCOME" | "EXPENSE" }
 type Tx = {
-  id: string;
-  occurredAt: string;
-  kind: "INCOME" | "EXPENSE";
-  description: string;
-  category: { id: string; name: string } | null;
-  amountOriginal: number;
-  currencyCode: string;
-  amountBase: number;
-  amountQuote: number;
-  tags?: { id: string; name: string }[];
-};
+  id: string
+  occurredAt: string
+  kind: "INCOME" | "EXPENSE"
+  description: string
+  category: { id: string; name: string } | null
+  amountOriginal: number
+  currencyCode: string
+  amountBase: number
+  amountQuote: number
+  tags?: { id: string; name: string }[]
+}
 
 const formSchema = z.object({
   occurredAt: z.string().min(1),
@@ -64,46 +64,44 @@ const formSchema = z.object({
   amountOriginal: z.number().positive(),
   currencyCode: z.string().min(3).max(3),
   tagNames: z.string().optional(),
-});
+})
 
-type FormValues = z.infer<typeof formSchema>;
+type FormValues = z.infer<typeof formSchema>
 
 async function fetchCategories(): Promise<Category[]> {
-  const res = await fetch("/api/categories");
-  if (!res.ok) throw new Error("categories");
-  return res.json();
+  const res = await fetch("/api/categories")
+  if (!res.ok) throw new Error("categories")
+  return res.json()
 }
 
 async function fetchTags(): Promise<{ id: string; name: string }[]> {
-  const res = await fetch("/api/tags");
-  if (!res.ok) throw new Error("tags");
-  return res.json();
+  const res = await fetch("/api/tags")
+  if (!res.ok) throw new Error("tags")
+  return res.json()
 }
 
 async function fetchTxs(params: URLSearchParams) {
-  const res = await fetch(`/api/transactions?${params.toString()}`);
-  if (!res.ok) throw new Error("tx");
-  return res.json() as Promise<{ items: Tx[]; total: number; page: number; pageSize: number }>;
+  const res = await fetch(`/api/transactions?${params.toString()}`)
+  if (!res.ok) throw new Error("tx")
+  return res.json() as Promise<{ items: Tx[]; total: number; page: number; pageSize: number }>
 }
 
 export default function TransactionsPage() {
-  const qc = useQueryClient();
-  const [page, setPage] = React.useState(1);
-  const [sorting, setSorting] = React.useState<SortingState>([
-    { id: "occurredAt", desc: true },
-  ]);
-  const [kindFilter, setKindFilter] = React.useState<string>("");
-  const [q, setQ] = React.useState("");
-  const [debouncedQ, setDebouncedQ] = React.useState("");
+  const qc = useQueryClient()
+  const [page, setPage] = React.useState(1)
+  const [sorting, setSorting] = React.useState<SortingState>([{ id: "occurredAt", desc: true }])
+  const [kindFilter, setKindFilter] = React.useState<string>("")
+  const [q, setQ] = React.useState("")
+  const [debouncedQ, setDebouncedQ] = React.useState("")
 
   React.useEffect(() => {
-    const t = setTimeout(() => setDebouncedQ(q), 300);
-    return () => clearTimeout(t);
-  }, [q]);
+    const t = setTimeout(() => setDebouncedQ(q), 300)
+    return () => clearTimeout(t)
+  }, [q])
 
-  const sort = sorting[0];
-  const sortBy = sort?.id ?? "occurredAt";
-  const sortDir = sort?.desc ? "desc" : "asc";
+  const sort = sorting[0]
+  const sortBy = sort?.id ?? "occurredAt"
+  const sortDir = sort?.desc ? "desc" : "asc"
 
   const params = React.useMemo(() => {
     const p = new URLSearchParams({
@@ -111,26 +109,26 @@ export default function TransactionsPage() {
       pageSize: "15",
       sortBy,
       sortDir,
-    });
-    if (kindFilter) p.set("kind", kindFilter);
-    if (debouncedQ) p.set("q", debouncedQ);
-    return p;
-  }, [page, sortBy, sortDir, kindFilter, debouncedQ]);
+    })
+    if (kindFilter) p.set("kind", kindFilter)
+    if (debouncedQ) p.set("q", debouncedQ)
+    return p
+  }, [page, sortBy, sortDir, kindFilter, debouncedQ])
 
   const { data: categories } = useQuery({
     queryKey: ["categories"],
     queryFn: fetchCategories,
-  });
+  })
 
   const { data: tags } = useQuery({
     queryKey: ["tags"],
     queryFn: fetchTags,
-  });
+  })
 
   const { data, isPending } = useQuery({
     queryKey: ["transactions", params.toString()],
     queryFn: () => fetchTxs(params),
-  });
+  })
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -143,17 +141,17 @@ export default function TransactionsPage() {
       currencyCode: REPORTING_CURRENCY,
       tagNames: "",
     },
-  });
+  })
 
   React.useEffect(() => {
-    form.setValue("currencyCode", REPORTING_CURRENCY);
-  }, [form]);
+    form.setValue("currencyCode", REPORTING_CURRENCY)
+  }, [form])
 
-  const watchedKind = useWatch({ control: form.control, name: "kind" }) ?? "EXPENSE";
+  const watchedKind = useWatch({ control: form.control, name: "kind" }) ?? "EXPENSE"
   const filteredCats = React.useMemo(
     () => (categories ?? []).filter((c) => c.kind === watchedKind),
     [categories, watchedKind],
-  );
+  )
 
   const createMut = useMutation({
     mutationFn: async (body: FormValues) => {
@@ -164,17 +162,17 @@ export default function TransactionsPage() {
             .map((s) => s.trim())
             .filter(Boolean),
         ),
-      ];
-      const tagIds: string[] = [];
+      ]
+      const tagIds: string[] = []
       for (const name of names) {
         const tr = await fetch("/api/tags", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ name }),
-        });
-        if (!tr.ok) throw new Error("Tag failed");
-        const tj = (await tr.json()) as { id: string };
-        tagIds.push(tj.id);
+        })
+        if (!tr.ok) throw new Error("Tag failed")
+        const tj = (await tr.json()) as { id: string }
+        tagIds.push(tj.id)
       }
       const res = await fetch("/api/transactions", {
         method: "POST",
@@ -188,48 +186,47 @@ export default function TransactionsPage() {
           currencyCode: body.currencyCode,
           tagIds,
         }),
-      });
+      })
       if (!res.ok) {
-        const err = await res.json().catch(() => ({}));
-        throw new Error(err?.error?.formErrors?.join?.() ?? "Save failed");
+        const err = await res.json().catch(() => ({}))
+        throw new Error(err?.error?.formErrors?.join?.() ?? "Save failed")
       }
-      return res.json();
+      return res.json()
     },
     onSuccess: () => {
-      toast.success("Entry saved");
-      qc.invalidateQueries({ queryKey: ["transactions"] });
-      qc.invalidateQueries({ queryKey: ["analytics"] });
-      qc.invalidateQueries({ queryKey: ["tags"] });
+      toast.success("Entry saved")
+      qc.invalidateQueries({ queryKey: ["transactions"] })
+      qc.invalidateQueries({ queryKey: ["analytics"] })
+      qc.invalidateQueries({ queryKey: ["tags"] })
       form.reset({
         ...form.getValues(),
         description: "",
         amountOriginal: 1,
         tagNames: "",
-      });
+      })
     },
     onError: (e: Error) => toast.error(e.message),
-  });
+  })
 
   const deleteMut = useMutation({
     mutationFn: async (id: string) => {
-      const res = await fetch(`/api/transactions/${id}`, { method: "DELETE" });
-      if (!res.ok) throw new Error("Delete failed");
+      const res = await fetch(`/api/transactions/${id}`, { method: "DELETE" })
+      if (!res.ok) throw new Error("Delete failed")
     },
     onSuccess: () => {
-      toast.success("Removed");
-      qc.invalidateQueries({ queryKey: ["transactions"] });
-      qc.invalidateQueries({ queryKey: ["analytics"] });
+      toast.success("Removed")
+      qc.invalidateQueries({ queryKey: ["transactions"] })
+      qc.invalidateQueries({ queryKey: ["analytics"] })
     },
     onError: () => toast.error("Could not delete"),
-  });
+  })
 
   const columns = React.useMemo<ColumnDef<Tx>[]>(
     () => [
       {
         accessorKey: "occurredAt",
         header: "Date",
-        cell: ({ getValue }) =>
-          format(new Date(getValue<string>()), "MMM d, yyyy HH:mm"),
+        cell: ({ getValue }) => format(new Date(getValue<string>()), "MMM d, yyyy HH:mm"),
       },
       {
         accessorKey: "kind",
@@ -245,9 +242,7 @@ export default function TransactionsPage() {
         id: "tags",
         header: "Tags",
         cell: ({ row }) =>
-          row.original.tags?.length
-            ? row.original.tags.map((t) => t.name).join(", ")
-            : "—",
+          row.original.tags?.length ? row.original.tags.map((t) => t.name).join(", ") : "—",
       },
       {
         accessorKey: "category",
@@ -296,7 +291,7 @@ export default function TransactionsPage() {
       },
     ],
     [deleteMut],
-  );
+  )
 
   const table = useReactTable({
     data: data?.items ?? [],
@@ -307,11 +302,11 @@ export default function TransactionsPage() {
     manualPagination: true,
     pageCount: data ? Math.ceil(data.total / data.pageSize) : 0,
     getCoreRowModel: getCoreRowModel(),
-  });
+  })
 
   React.useEffect(() => {
-    setPage(1);
-  }, [kindFilter, debouncedQ, sortBy, sortDir]);
+    setPage(1)
+  }, [kindFilter, debouncedQ, sortBy, sortDir])
 
   return (
     <div className="space-y-8">
@@ -324,8 +319,8 @@ export default function TransactionsPage() {
         <CardHeader>
           <CardTitle>New entry</CardTitle>
           <CardDescription>
-            Keyboard friendly: Tab through fields. Amounts are always positive; kind
-            determines flow.
+            Keyboard friendly: Tab through fields. Amounts are always positive; kind determines
+            flow.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -443,9 +438,7 @@ export default function TransactionsPage() {
         <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
           <div>
             <CardTitle>Entries</CardTitle>
-            <CardDescription>
-              {data ? `${data.total} total` : "—"} · TanStack Table
-            </CardDescription>
+            <CardDescription>{data ? `${data.total} total` : "—"} · TanStack Table</CardDescription>
           </div>
           <div className="flex flex-wrap gap-2">
             <Input
@@ -485,15 +478,12 @@ export default function TransactionsPage() {
                           key={header.id}
                           className={
                             header.column.getCanSort()
-                              ? "cursor-pointer select-none hover:text-foreground"
+                              ? "hover:text-foreground cursor-pointer select-none"
                               : undefined
                           }
                           onClick={header.column.getToggleSortingHandler()}
                         >
-                          {flexRender(
-                            header.column.columnDef.header,
-                            header.getContext(),
-                          )}
+                          {flexRender(header.column.columnDef.header, header.getContext())}
                           {{
                             asc: " ↑",
                             desc: " ↓",
@@ -515,7 +505,7 @@ export default function TransactionsPage() {
                   ))}
                 </TableBody>
               </Table>
-              <div className="mt-4 flex items-center justify-between text-xs text-muted-foreground">
+              <div className="text-muted-foreground mt-4 flex items-center justify-between text-xs">
                 <span>
                   Page {data?.page ?? 1} of{" "}
                   {data ? Math.max(1, Math.ceil(data.total / data.pageSize)) : 1}
@@ -534,9 +524,7 @@ export default function TransactionsPage() {
                     type="button"
                     variant="outline"
                     size="sm"
-                    disabled={
-                      !data || page >= Math.ceil(data.total / data.pageSize)
-                    }
+                    disabled={!data || page >= Math.ceil(data.total / data.pageSize)}
                     onClick={() => setPage((p) => p + 1)}
                   >
                     Next
@@ -548,5 +536,5 @@ export default function TransactionsPage() {
         </CardContent>
       </Card>
     </div>
-  );
+  )
 }

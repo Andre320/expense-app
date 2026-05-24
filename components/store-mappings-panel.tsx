@@ -1,16 +1,16 @@
-"use client";
+"use client"
 
-import Link from "next/link";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import * as React from "react";
-import { toast } from "sonner";
-import { Trash2 } from "lucide-react";
-import { PageIntro } from "@/components/patterns/page-intro";
-import { SELECT_NONE, SelectField } from "@/components/select-field";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import Link from "next/link"
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import * as React from "react"
+import { toast } from "sonner"
+import { Trash2 } from "lucide-react"
+import { PageIntro } from "@/components/patterns/page-intro"
+import { SELECT_NONE, SelectField } from "@/components/select-field"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import {
   Table,
   TableBody,
@@ -18,45 +18,45 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-} from "@/components/ui/table";
+} from "@/components/ui/table"
 
-type Category = { id: string; name: string; kind: string };
+type Category = { id: string; name: string; kind: string }
 type KnownStore = {
-  id: string;
-  pattern: string;
-  displayName: string;
-  categoryId: string;
-  categoryName: string;
-  position: number;
-};
+  id: string
+  pattern: string
+  displayName: string
+  categoryId: string
+  categoryName: string
+  position: number
+}
 
 async function fetchCategories(): Promise<Category[]> {
-  const res = await fetch("/api/categories");
-  if (!res.ok) throw new Error("categories");
-  return res.json();
+  const res = await fetch("/api/categories")
+  if (!res.ok) throw new Error("categories")
+  return res.json()
 }
 
 async function fetchStores(): Promise<KnownStore[]> {
-  const res = await fetch("/api/known-stores");
-  if (!res.ok) throw new Error("stores");
-  return res.json();
+  const res = await fetch("/api/known-stores")
+  if (!res.ok) throw new Error("stores")
+  return res.json()
 }
 
 export function StoreMappingsPanel({ embedded }: { embedded?: boolean }) {
-  const qc = useQueryClient();
+  const qc = useQueryClient()
   const { data: categories } = useQuery({
     queryKey: ["categories"],
     queryFn: fetchCategories,
-  });
+  })
   const { data: stores, isPending } = useQuery({
     queryKey: ["known-stores"],
     queryFn: fetchStores,
-  });
+  })
 
   const expenseCats = React.useMemo(
     () => (categories ?? []).filter((c) => c.kind === "EXPENSE"),
     [categories],
-  );
+  )
 
   const categoryOptions = React.useMemo(
     () => [
@@ -64,11 +64,11 @@ export function StoreMappingsPanel({ embedded }: { embedded?: boolean }) {
       ...expenseCats.map((c) => ({ value: c.id, label: c.name })),
     ],
     [expenseCats],
-  );
+  )
 
-  const [pattern, setPattern] = React.useState("");
-  const [displayName, setDisplayName] = React.useState("");
-  const [categoryId, setCategoryId] = React.useState("");
+  const [pattern, setPattern] = React.useState("")
+  const [displayName, setDisplayName] = React.useState("")
+  const [categoryId, setCategoryId] = React.useState("")
 
   const createMut = useMutation({
     mutationFn: async () => {
@@ -76,34 +76,34 @@ export function StoreMappingsPanel({ embedded }: { embedded?: boolean }) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ pattern, displayName, categoryId }),
-      });
+      })
       if (!res.ok) {
-        const j = await res.json().catch(() => ({}));
-        throw new Error(j.error ?? "Could not create mapping");
+        const j = await res.json().catch(() => ({}))
+        throw new Error(j.error ?? "Could not create mapping")
       }
-      return res.json();
+      return res.json()
     },
     onSuccess: () => {
-      toast.success("Mapping saved");
-      setPattern("");
-      setDisplayName("");
-      setCategoryId("");
-      qc.invalidateQueries({ queryKey: ["known-stores"] });
+      toast.success("Mapping saved")
+      setPattern("")
+      setDisplayName("")
+      setCategoryId("")
+      qc.invalidateQueries({ queryKey: ["known-stores"] })
     },
     onError: (e: Error) => toast.error(e.message),
-  });
+  })
 
   const deleteMut = useMutation({
     mutationFn: async (id: string) => {
-      const res = await fetch(`/api/known-stores/${id}`, { method: "DELETE" });
-      if (!res.ok) throw new Error("Delete failed");
+      const res = await fetch(`/api/known-stores/${id}`, { method: "DELETE" })
+      if (!res.ok) throw new Error("Delete failed")
     },
     onSuccess: () => {
-      toast.success("Removed");
-      qc.invalidateQueries({ queryKey: ["known-stores"] });
+      toast.success("Removed")
+      qc.invalidateQueries({ queryKey: ["known-stores"] })
     },
     onError: () => toast.error("Could not delete"),
-  });
+  })
 
   return (
     <div className="space-y-8">
@@ -112,9 +112,8 @@ export function StoreMappingsPanel({ embedded }: { embedded?: boolean }) {
           title="Store mappings"
           description={
             <>
-              Match substrings in bank descriptions (e.g.{" "}
-              <code className="text-[11px]">MXM</code>) to a clean name and expense category.
-              Used automatically on BAC PDF import.
+              Match substrings in bank descriptions (e.g. <code className="text-[11px]">MXM</code>)
+              to a clean name and expense category. Used automatically on BAC PDF import.
             </>
           }
           actions={
@@ -124,8 +123,9 @@ export function StoreMappingsPanel({ embedded }: { embedded?: boolean }) {
           }
         />
       ) : (
-        <p className="text-sm text-muted-foreground">
-          Patterns match case-insensitive on import. Expense categories come from your category list.
+        <p className="text-muted-foreground text-sm">
+          Patterns match case-insensitive on import. Expense categories come from your category
+          list.
         </p>
       )}
 
@@ -181,9 +181,9 @@ export function StoreMappingsPanel({ embedded }: { embedded?: boolean }) {
         </CardHeader>
         <CardContent>
           {isPending ? (
-            <p className="text-sm text-muted-foreground">Loading…</p>
+            <p className="text-muted-foreground text-sm">Loading…</p>
           ) : !stores?.length ? (
-            <p className="text-sm text-muted-foreground">No mappings yet.</p>
+            <p className="text-muted-foreground text-sm">No mappings yet.</p>
           ) : (
             <Table>
               <TableHeader>
@@ -220,5 +220,5 @@ export function StoreMappingsPanel({ embedded }: { embedded?: boolean }) {
         </CardContent>
       </Card>
     </div>
-  );
+  )
 }

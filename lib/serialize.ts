@@ -9,14 +9,14 @@ import type {
   SavingsGoalMovement,
   Tag,
   Transaction,
-} from "@/app/generated/prisma/client";
-import { parseBonusMonths } from "./income-bonus";
-import { numFromDecimal } from "./decimal";
+} from "@/app/generated/prisma/client"
+import { parseBonusMonths } from "./income-bonus"
+import { numFromDecimal } from "./decimal"
 
 export function serializeTransaction(
   t: Transaction & {
-    category?: Category | null;
-    tags?: { tag: Tag }[];
+    category?: Category | null
+    tags?: { tag: Tag }[]
   },
 ) {
   return {
@@ -40,19 +40,19 @@ export function serializeTransaction(
     })),
     createdAt: t.createdAt.toISOString(),
     updatedAt: t.updatedAt.toISOString(),
-  };
+  }
 }
 
 export function serializeSettings(s: {
-  id: string;
-  crSalaryGross: unknown;
-  crSalaryCurrency: string;
-  crPayPeriod: string;
-  crCrcPerUsd: unknown;
-  crSolidaristaPct: unknown;
-  crPensionComplementariaPct: unknown;
-  crEsppPct: unknown;
-  updatedAt: Date;
+  id: string
+  crSalaryGross: unknown
+  crSalaryCurrency: string
+  crPayPeriod: string
+  crCrcPerUsd: unknown
+  crSolidaristaPct: unknown
+  crPensionComplementariaPct: unknown
+  crEsppPct: unknown
+  updatedAt: Date
 }) {
   return {
     id: s.id,
@@ -64,7 +64,7 @@ export function serializeSettings(s: {
     crPensionComplementariaPct: numFromDecimal(s.crPensionComplementariaPct),
     crEsppPct: numFromDecimal(s.crEsppPct),
     updatedAt: s.updatedAt.toISOString(),
-  };
+  }
 }
 
 export function serializeSavings(g: SavingsGoal) {
@@ -79,7 +79,7 @@ export function serializeSavings(g: SavingsGoal) {
     priorityOrder: g.priorityOrder,
     createdAt: g.createdAt.toISOString(),
     updatedAt: g.updatedAt.toISOString(),
-  };
+  }
 }
 
 export function serializeIncomeBonus(b: IncomeBonus) {
@@ -92,7 +92,7 @@ export function serializeIncomeBonus(b: IncomeBonus) {
     position: b.position,
     createdAt: b.createdAt.toISOString(),
     updatedAt: b.updatedAt.toISOString(),
-  };
+  }
 }
 
 export function serializeSavingsAccount(a: SavingsAccount) {
@@ -105,7 +105,7 @@ export function serializeSavingsAccount(a: SavingsAccount) {
     position: a.position,
     createdAt: a.createdAt.toISOString(),
     updatedAt: a.updatedAt.toISOString(),
-  };
+  }
 }
 
 export function serializeSavingsAccountMovement(m: SavingsAccountMovement) {
@@ -117,7 +117,7 @@ export function serializeSavingsAccountMovement(m: SavingsAccountMovement) {
     description: m.description,
     occurredAt: m.occurredAt.toISOString(),
     createdAt: m.createdAt.toISOString(),
-  };
+  }
 }
 
 export function serializeSavingsGoalMovement(m: SavingsGoalMovement) {
@@ -129,7 +129,7 @@ export function serializeSavingsGoalMovement(m: SavingsGoalMovement) {
     description: m.description,
     occurredAt: m.occurredAt.toISOString(),
     createdAt: m.createdAt.toISOString(),
-  };
+  }
 }
 
 export function serializeRsuPlan(p: RsuPlan) {
@@ -147,7 +147,7 @@ export function serializeRsuPlan(p: RsuPlan) {
     position: p.position,
     createdAt: p.createdAt.toISOString(),
     updatedAt: p.updatedAt.toISOString(),
-  };
+  }
 }
 
 export function serializeRsuVest(v: RsuVest) {
@@ -164,5 +164,5 @@ export function serializeRsuVest(v: RsuVest) {
     cashBonusUsd: v.cashBonusUsd != null ? numFromDecimal(v.cashBonusUsd) : null,
     createdAt: v.createdAt.toISOString(),
     updatedAt: v.updatedAt.toISOString(),
-  };
+  }
 }

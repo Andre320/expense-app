@@ -1,8 +1,8 @@
-import "dotenv/config";
-import { PrismaClient } from "../app/generated/prisma/client";
-import { createSqliteAdapter } from "../lib/prisma-adapter";
+import "dotenv/config"
+import { PrismaClient } from "../app/generated/prisma/client"
+import { createSqliteAdapter } from "../lib/prisma-adapter"
 
-const prisma = new PrismaClient({ adapter: createSqliteAdapter() });
+const prisma = new PrismaClient({ adapter: createSqliteAdapter() })
 
 async function main() {
   await prisma.appSettings.upsert({
@@ -18,7 +18,7 @@ async function main() {
       crEsppPct: "0",
     },
     update: {},
-  });
+  })
 
   const defaults = [
     { name: "Salary", kind: "INCOME" as const, position: 1, color: "#22d3ee" },
@@ -33,14 +33,14 @@ async function main() {
       position: 99,
       color: "#71717a",
     },
-  ];
+  ]
 
   for (const c of defaults) {
     await prisma.category.upsert({
       where: { name_kind: { name: c.name, kind: c.kind } },
       create: c,
       update: { position: c.position, color: c.color },
-    });
+    })
   }
 
   if ((await prisma.savingsGoal.count()) === 0) {
@@ -52,7 +52,7 @@ async function main() {
         color: "#34d399",
         priorityOrder: 1,
       },
-    });
+    })
     await prisma.savingsGoalMovement.create({
       data: {
         goalId: goal.id,
@@ -60,7 +60,7 @@ async function main() {
         amount: "8500",
         description: "Already saved",
       },
-    });
+    })
   }
 
   if ((await prisma.savingsAccount.count()) === 0) {
@@ -71,7 +71,7 @@ async function main() {
         balance: "12000",
         position: 1,
       },
-    });
+    })
     await prisma.savingsAccountMovement.create({
       data: {
         accountId: account.id,
@@ -79,7 +79,7 @@ async function main() {
         amount: "12000",
         description: "Opening balance",
       },
-    });
+    })
   }
 
   if ((await prisma.incomeBonus.count()) === 0) {
@@ -91,20 +91,20 @@ async function main() {
         months: "[12]",
         position: 1,
       },
-    });
+    })
   }
 
   if ((await prisma.rsuPlan.count()) === 0) {
-    const { buildVestSchedule, settleVestReceive } = await import("../lib/rsu-vesting");
-    const grantDate = new Date("2022-01-01T12:00:00");
-    const exampleVestPriceUsd = 150;
+    const { buildVestSchedule, settleVestReceive } = await import("../lib/rsu-vesting")
+    const grantDate = new Date("2022-01-01T12:00:00")
+    const exampleVestPriceUsd = 150
     const schedule = buildVestSchedule({
       grantDate,
       totalShares: 100,
       vestingPeriodMonths: 48,
       vestIntervalMonths: 3,
       vestDayOfMonth: 20,
-    });
+    })
 
     const plan = await prisma.rsuPlan.create({
       data: {
@@ -118,29 +118,29 @@ async function main() {
         taxWithholdPct: "20",
         position: 1,
       },
-    });
+    })
 
-    let grossReceived = 0;
-    const targetReceived = 16;
+    let grossReceived = 0
+    const targetReceived = 16
 
     for (const row of schedule) {
-      const receive = grossReceived < targetReceived;
-      let status: "PENDING" | "RECEIVED" = "PENDING";
-      let receivedAt: Date | undefined;
-      let sharesWithheld: string | undefined;
-      let netShares: string | undefined;
-      let cashBonusUsd: string | undefined;
+      const receive = grossReceived < targetReceived
+      let status: "PENDING" | "RECEIVED" = "PENDING"
+      let receivedAt: Date | undefined
+      let sharesWithheld: string | undefined
+      let netShares: string | undefined
+      let cashBonusUsd: string | undefined
 
       if (receive) {
-        status = "RECEIVED";
-        receivedAt = row.scheduledDate;
-        const settlement = settleVestReceive(row.shares, 20, exampleVestPriceUsd);
-        sharesWithheld = String(settlement.sharesWithheld);
-        netShares = String(settlement.netWholeShares);
+        status = "RECEIVED"
+        receivedAt = row.scheduledDate
+        const settlement = settleVestReceive(row.shares, 20, exampleVestPriceUsd)
+        sharesWithheld = String(settlement.sharesWithheld)
+        netShares = String(settlement.netWholeShares)
         if (settlement.cashBonusUsd > 0) {
-          cashBonusUsd = String(settlement.cashBonusUsd);
+          cashBonusUsd = String(settlement.cashBonusUsd)
         }
-        grossReceived += row.shares;
+        grossReceived += row.shares
       }
 
       await prisma.rsuVest.create({
@@ -155,7 +155,7 @@ async function main() {
           netShares,
           cashBonusUsd,
         },
-      });
+      })
     }
   }
 }
@@ -163,7 +163,7 @@ async function main() {
 main()
   .then(() => prisma.$disconnect())
   .catch(async (e) => {
-    console.error(e);
-    await prisma.$disconnect();
-    process.exit(1);
-  });
+    console.error(e)
+    await prisma.$disconnect()
+    process.exit(1)
+  })

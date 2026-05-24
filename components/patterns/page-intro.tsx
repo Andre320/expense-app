@@ -11,14 +11,7 @@ type Props = {
   className?: string
 }
 
-export function PageIntro({
-  eyebrow,
-  title,
-  description,
-  actions,
-  stacked,
-  className,
-}: Props) {
+export function PageIntro({ eyebrow, title, description, actions, stacked, className }: Props) {
   return (
     <header
       className={cn(
@@ -30,13 +23,13 @@ export function PageIntro({
     >
       <div className="space-y-1">
         {eyebrow ? (
-          <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
+          <p className="text-muted-foreground text-[10px] font-semibold tracking-widest uppercase">
             {eyebrow}
           </p>
         ) : null}
         <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
         {description ? (
-          <div className="max-w-2xl text-sm text-muted-foreground">{description}</div>
+          <div className="text-muted-foreground max-w-2xl text-sm">{description}</div>
         ) : null}
       </div>
       {actions ? <div className="flex flex-wrap gap-2">{actions}</div> : null}
