@@ -20,7 +20,7 @@ export function MetricStat({
     <div className={cn("space-y-1", className)}>
       <p
         className={cn(
-          "text-[10px] font-medium uppercase tracking-wider text-[var(--muted-fg)]",
+          "text-[10px] font-medium uppercase tracking-wider text-muted-foreground",
           labelClassName,
         )}
       >

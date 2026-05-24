@@ -1,15 +1,15 @@
-import * as React from "react";
-import { cn } from "@/lib/utils";
+import * as React from "react"
+import { cn } from "@/lib/utils"
 
 type Props = {
-  eyebrow?: string;
-  title: string;
-  description?: React.ReactNode;
-  actions?: React.ReactNode;
+  eyebrow?: string
+  title: string
+  description?: React.ReactNode
+  actions?: React.ReactNode
   /** When true, skip the wide-screen row layout (title + actions side by side). */
-  stacked?: boolean;
-  className?: string;
-};
+  stacked?: boolean
+  className?: string
+}
 
 export function PageIntro({
   eyebrow,
@@ -30,16 +30,16 @@ export function PageIntro({
     >
       <div className="space-y-1">
         {eyebrow ? (
-          <p className="text-[10px] font-semibold uppercase tracking-widest text-[var(--muted-fg)]">
+          <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
             {eyebrow}
           </p>
         ) : null}
         <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
         {description ? (
-          <div className="max-w-2xl text-sm text-[var(--muted-fg)]">{description}</div>
+          <div className="max-w-2xl text-sm text-muted-foreground">{description}</div>
         ) : null}
       </div>
       {actions ? <div className="flex flex-wrap gap-2">{actions}</div> : null}
     </header>
-  );
+  )
 }

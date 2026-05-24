@@ -6,6 +6,7 @@ import { format } from "date-fns";
 import { formatMoneyBase } from "@/lib/format-money";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
   TableBody,
@@ -44,11 +45,20 @@ export function RecentLedger({ baseCurrency }: { baseCurrency: string }) {
   });
 
   if (isPending) {
-    return <p className="text-sm text-[var(--muted-fg)]">Loading recent activity…</p>;
+    return (
+      <div className="space-y-3">
+        <Skeleton className="h-4 w-28" />
+        <div className="space-y-2">
+          {Array.from({ length: 6 }).map((_, i) => (
+            <Skeleton key={i} className="h-8 w-full" />
+          ))}
+        </div>
+      </div>
+    );
   }
   if (!data?.items.length) {
     return (
-      <p className="text-sm text-[var(--muted-fg)]">
+      <p className="text-sm text-muted-foreground">
         No transactions yet. Use <Link href="/activity" className="underline-offset-2 hover:underline">Activity</Link> to import or add rows.
       </p>
     );
@@ -57,7 +67,7 @@ export function RecentLedger({ baseCurrency }: { baseCurrency: string }) {
   return (
     <div className="space-y-3">
       <div className="flex items-center justify-between gap-2">
-        <p className="text-xs font-medium uppercase tracking-wider text-[var(--muted-fg)]">
+        <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
           Recent ledger
         </p>
         <Button variant="ghost" size="sm" className="h-8 text-xs" asChild>
@@ -76,13 +86,13 @@ export function RecentLedger({ baseCurrency }: { baseCurrency: string }) {
         <TableBody>
           {data.items.map((t) => (
             <TableRow key={t.id}>
-              <TableCell className="whitespace-nowrap text-xs text-[var(--muted-fg)]">
+              <TableCell className="whitespace-nowrap text-xs text-muted-foreground">
                 {format(new Date(t.occurredAt), "MMM d")}
               </TableCell>
               <TableCell className="max-w-[200px] truncate text-xs">
                 {t.description || "—"}
                 {t.category ? (
-                  <span className="ml-1 text-[10px] text-[var(--muted-fg)]">· {t.category.name}</span>
+                  <span className="ml-1 text-[10px] text-muted-foreground">· {t.category.name}</span>
                 ) : null}
               </TableCell>
               <TableCell>

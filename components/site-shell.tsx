@@ -1,64 +1,112 @@
-"use client";
+"use client"
 
-import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { ArrowLeftRight, CloudUpload, LayoutDashboard, Settings2, Sparkles } from "lucide-react";
-import { cn } from "@/lib/utils";
+import Link from "next/link"
+import { usePathname } from "next/navigation"
+import {
+  ArrowLeftRight,
+  CloudUpload,
+  LayoutDashboard,
+  PiggyBank,
+  Settings2,
+  Sparkles,
+  TrendingUp,
+} from "lucide-react"
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarHeader,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarProvider,
+  SidebarInset,
+  SidebarTrigger,
+} from "@/components/ui/sidebar"
+import { Separator } from "@/components/ui/separator"
 
 const nav = [
   { href: "/", label: "Dashboard", icon: LayoutDashboard },
-  { href: "/planner", label: "Planner", icon: Sparkles },
+  { href: "/income", label: "Income", icon: Sparkles },
+  { href: "/savings", label: "Savings", icon: PiggyBank },
+  { href: "/stocks", label: "Stocks", icon: TrendingUp },
   { href: "/activity", label: "Activity", icon: CloudUpload },
   { href: "/settings", label: "Settings", icon: Settings2 },
-];
+]
 
-export function SiteShell({ children }: { children: React.ReactNode }) {
-  const pathname = usePathname();
+function AppSidebar() {
+  const pathname = usePathname()
 
   return (
-    <div className="flex min-h-screen bg-[var(--background)]">
-      <aside className="sticky top-0 flex h-screen w-52 shrink-0 flex-col border-r border-[var(--border)]/80 bg-[var(--card)]/80 px-4 py-8 backdrop-blur-sm sm:w-56">
-        <Link href="/" className="mb-10 flex items-center gap-2.5 px-1 transition-opacity hover:opacity-90">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-[var(--muted)]">
-            <ArrowLeftRight className="h-4 w-4 text-[var(--foreground)]" />
-          </div>
-          <div>
-            <div className="text-sm font-semibold tracking-tight">Expense</div>
-            <div className="text-[10px] text-[var(--muted-fg)]">Local workspace</div>
-          </div>
-        </Link>
-        <nav className="flex flex-1 flex-col gap-1">
-          {nav.map(({ href, label, icon: Icon }) => {
-            const active =
-              href === "/"
-                ? pathname === "/"
-                : href === "/settings"
-                  ? pathname === "/settings" || pathname.startsWith("/settings/")
-                  : pathname === href || pathname.startsWith(`${href}/`);
-            return (
-              <Link
-                key={href}
-                href={href}
-                className={cn(
-                  "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors",
-                  active
-                    ? "bg-[var(--muted)] text-[var(--foreground)] shadow-sm"
-                    : "text-[var(--muted-fg)] hover:bg-[var(--muted)]/50 hover:text-[var(--foreground)]",
-                )}
-              >
-                <Icon className="h-4 w-4 shrink-0 opacity-85" />
-                {label}
+    <Sidebar collapsible="icon">
+      <SidebarHeader className="border-b border-sidebar-border">
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton size="lg" asChild>
+              <Link href="/">
+                <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-accent text-sidebar-accent-foreground">
+                  <ArrowLeftRight className="size-4" />
+                </div>
+                <div className="grid flex-1 text-left text-sm leading-tight">
+                  <span className="truncate font-semibold">Expense</span>
+                  <span className="truncate text-xs text-muted-foreground">
+                    Local workspace
+                  </span>
+                </div>
               </Link>
-            );
-          })}
-        </nav>
-        <p className="mt-auto px-1 pt-8 text-[10px] leading-relaxed text-[var(--muted-fg)]">
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
+      </SidebarHeader>
+      <SidebarContent>
+        <SidebarGroup>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {nav.map(({ href, label, icon: Icon }) => {
+                const active =
+                  href === "/"
+                    ? pathname === "/"
+                    : href === "/settings"
+                      ? pathname === "/settings" || pathname.startsWith("/settings/")
+                      : pathname === href || pathname.startsWith(`${href}/`)
+                return (
+                  <SidebarMenuItem key={href}>
+                    <SidebarMenuButton asChild isActive={active} tooltip={label}>
+                      <Link href={href}>
+                        <Icon />
+                        <span>{label}</span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                )
+              })}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+      </SidebarContent>
+      <SidebarFooter className="border-t border-sidebar-border">
+        <p className="px-2 py-2 text-[10px] leading-relaxed text-muted-foreground">
           SQLite + Prisma · data stays on device
         </p>
-      </aside>
-      <div className="flex min-w-0 flex-1 flex-col">
+      </SidebarFooter>
+    </Sidebar>
+  )
+}
+
+export function SiteShell({ children }: { children: React.ReactNode }) {
+  return (
+    <SidebarProvider defaultOpen>
+      <AppSidebar />
+      <SidebarInset>
+        <header className="flex h-12 shrink-0 items-center gap-2 border-b border-border px-4 md:hidden">
+          <SidebarTrigger className="-ml-1" />
+          <Separator orientation="vertical" className="mr-2 h-4" />
+          <span className="text-sm font-medium">Expense</span>
+        </header>
         <main className="flex-1 px-5 py-8 sm:px-8 sm:py-10 lg:px-12">{children}</main>
-      </div>
-    </div>
-  );
+      </SidebarInset>
+    </SidebarProvider>
+  )
 }

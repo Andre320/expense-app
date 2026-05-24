@@ -20,24 +20,29 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import {
+  goalsForForecast,
   monthlySurplusForForecast,
   savingsGoalMilestones,
   type SavingsGoalForecastInput,
 } from "@/lib/forecast-planning";
 import { rechartsTooltipContentStyle } from "@/lib/chart-style";
+import { REPORTING_CURRENCY } from "@/lib/app-currency";
 import { formatMoneyBase } from "@/lib/format-money";
+import { MONTH_LABELS } from "@/components/income-bonuses-manager";
 
 type Summary = {
   monthly: { month: string; income: number; expense: number }[];
   burnRate3Mo: number;
   savingsTotal: number;
+  savingsAccountsTotal?: number;
+  expectedMonthlyIncomeBase: number;
+  ledgerNetBalance: number;
+  hasSalaryProfile: boolean;
+  reportingCurrency: string;
+  forecastCalendarMonth: number;
+  activeBonusesThisMonth: { name: string; grossAmountCrc: number }[];
   settings: {
-    baseCurrency: string;
-    quoteCurrency: string;
-    quotePerBase: number;
-    currentBalanceBase: number;
-    monthlyIncomeBase: number;
-    monthlyDeductionsBase: number;
+    crCrcPerUsd: number;
   };
 };
 
@@ -64,7 +69,7 @@ export default function DashboardPage() {
   });
 
   if (isPending) {
-    return <div className="text-sm text-[var(--muted-fg)]">Loading dashboard…</div>;
+    return <div className="text-sm text-muted-foreground">Loading dashboard…</div>;
   }
   if (isError || !data) {
     return (
@@ -74,7 +79,7 @@ export default function DashboardPage() {
     );
   }
 
-  const bc = data.settings.baseCurrency;
+  const bc = data.reportingCurrency ?? REPORTING_CURRENCY;
   const chartData = data.monthly.map((m) => ({
     ...m,
     label: m.month.slice(5),
@@ -87,11 +92,20 @@ export default function DashboardPage() {
       : 0;
 
   const surplus = monthlySurplusForForecast(
-    data.settings.monthlyIncomeBase,
+    data.expectedMonthlyIncomeBase,
     data.burnRate3Mo,
   );
+  const crcPerUsd = data.settings?.crCrcPerUsd ?? 505;
   const milestones =
-    goals && goals.length ? savingsGoalMilestones(goals, surplus) : [];
+    goals && goals.length
+      ? savingsGoalMilestones(goalsForForecast(goals, crcPerUsd), surplus)
+      : [];
+
+  const monthLabel =
+    data.forecastCalendarMonth >= 1 && data.forecastCalendarMonth <= 12
+      ? MONTH_LABELS[data.forecastCalendarMonth - 1]
+      : undefined;
+  const bonusNames = (data.activeBonusesThisMonth ?? []).map((b) => b.name);
 
   return (
     <div className="space-y-10">
@@ -102,7 +116,10 @@ export default function DashboardPage() {
         actions={
           <>
             <Button variant="outline" size="sm" asChild>
-              <Link href="/planner">Planner</Link>
+              <Link href="/savings">Savings</Link>
+            </Button>
+            <Button variant="outline" size="sm" asChild>
+              <Link href="/income">Income</Link>
             </Button>
             <Button variant="outline" size="sm" asChild>
               <Link href="/activity">Activity</Link>
@@ -111,29 +128,48 @@ export default function DashboardPage() {
         }
       />
 
-      <Card className="border-dashed border-[var(--border)] bg-[var(--muted)]/10">
+      {!data.hasSalaryProfile ? (
+        <Card className="border-dashed border-border bg-muted/10">
+          <CardContent className="py-4 text-sm text-muted-foreground">
+            No salary profile saved yet. Set up gross salary and deductions on the{" "}
+            <Link href="/income" className="font-medium text-foreground underline-offset-2 hover:underline">
+              Income
+            </Link>{" "}
+            tab to enable planned surplus forecasting.
+          </CardContent>
+        </Card>
+      ) : null}
+
+      <Card className="border-dashed border-border bg-muted/10">
         <CardHeader className="pb-2">
           <CardTitle className="text-base">Planned surplus</CardTitle>
           <CardDescription>
-            Expected net income (Settings /{" "}
-            <Link href="/planner" className="underline-offset-2 hover:underline">
-              Planner
+            Expected net income for {monthLabel ?? "this month"} (
+            <Link href="/income" className="underline-offset-2 hover:underline">
+              Income
             </Link>
-            ) minus trailing 3-month average expenses from the ledger.
+            {bonusNames.length > 0 ? (
+              <> — includes {bonusNames.join(", ")}</>
+            ) : null}
+            ) minus trailing 3-month average expenses from{" "}
+            <Link href="/activity" className="underline-offset-2 hover:underline">
+              Activity
+            </Link>
+            .
           </CardDescription>
         </CardHeader>
         <CardContent className="flex flex-col gap-4 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
           <MetricStat
-            label="Expected monthly income"
+            label={`Expected income (${monthLabel ?? "this month"})`}
             labelClassName="text-xs font-normal normal-case tracking-normal"
-            value={formatMoneyBase(data.settings.monthlyIncomeBase, bc)}
+            value={formatMoneyBase(data.expectedMonthlyIncomeBase, bc)}
             valueClassName="text-xl font-semibold tabular-nums"
           />
           <MetricStat
             label="Avg monthly expenses (3 mo)"
             labelClassName="text-xs font-normal normal-case tracking-normal"
             value={formatMoneyBase(data.burnRate3Mo, bc)}
-            valueClassName="text-xl font-semibold tabular-nums text-[var(--muted-fg)]"
+            valueClassName="text-xl font-semibold tabular-nums text-muted-foreground"
           />
           <div className="flex items-center gap-2">
             <Badge variant={surplus >= 0 ? "success" : "danger"}>
@@ -143,15 +179,30 @@ export default function DashboardPage() {
         </CardContent>
       </Card>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
         <Card>
           <CardHeader className="pb-2">
-            <CardDescription>Current balance</CardDescription>
+            <CardDescription>Ledger net balance</CardDescription>
             <CardTitle className="text-xl tabular-nums">
-              {formatMoneyBase(data.settings.currentBalanceBase, bc)}
+              {formatMoneyBase(data.ledgerNetBalance, bc)}
             </CardTitle>
           </CardHeader>
-          <CardContent className="text-xs text-[var(--muted-fg)]">Base ({bc})</CardContent>
+          <CardContent className="text-xs text-muted-foreground">
+            All-time income − expenses (Activity)
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="pb-2">
+            <CardDescription>Cash in savings accounts</CardDescription>
+            <CardTitle className="text-xl tabular-nums">
+              {formatMoneyBase(data.savingsAccountsTotal ?? 0, bc)}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="text-xs text-muted-foreground">
+            <Link href="/savings" className="underline-offset-2 hover:underline">
+              Actual balances
+            </Link>
+          </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
@@ -160,7 +211,7 @@ export default function DashboardPage() {
               {formatMoneyBase(data.burnRate3Mo, bc)}
             </CardTitle>
           </CardHeader>
-          <CardContent className="text-xs text-[var(--muted-fg)]">Ledger burn rate</CardContent>
+          <CardContent className="text-xs text-muted-foreground">Ledger burn rate</CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
@@ -175,12 +226,16 @@ export default function DashboardPage() {
         </Card>
         <Card>
           <CardHeader className="pb-2">
-            <CardDescription>Savings (current)</CardDescription>
+            <CardDescription>Goals (earmarked)</CardDescription>
             <CardTitle className="text-xl tabular-nums">
               {formatMoneyBase(data.savingsTotal, bc)}
             </CardTitle>
           </CardHeader>
-          <CardContent className="text-xs text-[var(--muted-fg)]">Across goals</CardContent>
+          <CardContent className="text-xs text-muted-foreground">
+            <Link href="/savings" className="underline-offset-2 hover:underline">
+              Across goals
+            </Link>
+          </CardContent>
         </Card>
       </div>
 
@@ -189,7 +244,15 @@ export default function DashboardPage() {
           <CardHeader>
             <CardTitle>Savings forecast</CardTitle>
             <CardDescription>
-              Sequential funding by priority. Tune income and goals in the planner.
+              Sequential funding by priority. Manage goals on the{" "}
+              <Link href="/savings" className="underline-offset-2 hover:underline">
+                Savings
+              </Link>{" "}
+              tab; income comes from{" "}
+              <Link href="/income" className="underline-offset-2 hover:underline">
+                Income
+              </Link>
+              .
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -216,8 +279,8 @@ export default function DashboardPage() {
           <CardTitle>Income vs expenses</CardTitle>
           <CardDescription>Monthly totals in {bc} — trailing twelve months</CardDescription>
         </CardHeader>
-        <CardContent className="h-[300px] pt-2">
-          <ResponsiveContainer width="100%" height="100%">
+        <CardContent className="h-[300px] min-h-[300px] pt-2">
+          <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={280}>
             <BarChart data={chartData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#27272a" vertical={false} />
               <XAxis dataKey="label" stroke="#71717a" tick={{ fontSize: 11 }} />

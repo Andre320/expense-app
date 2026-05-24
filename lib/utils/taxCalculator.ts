@@ -163,28 +163,10 @@ export function computeCrSalary(
 }
 
 /**
- * Convert planned **monthly net** in CRC to app `monthlyIncomeBase` (base currency).
- * Uses `quotePerBase` when quote is CRC, or `crCrcPerUsd` when base is USD.
+ * Monthly net in CRC is the reporting amount (app uses CRC throughout).
  */
 export function plannedNetCrcToMonthlyIncomeBase(params: {
   netMonthlyCrc: number;
-  baseCurrency: string;
-  quoteCurrency: string;
-  quotePerBase: number;
-  crCrcPerUsd: number;
 }): number {
-  const bc = params.baseCurrency.toUpperCase();
-  const qc = params.quoteCurrency.toUpperCase();
-  const net = params.netMonthlyCrc;
-
-  if (bc === "CRC") return net;
-  if (qc === "CRC" && params.quotePerBase > 0) {
-    return net / params.quotePerBase;
-  }
-  if (bc === "USD" && params.crCrcPerUsd > 0) {
-    return net / params.crCrcPerUsd;
-  }
-  throw new Error(
-    "Cannot convert CRC net to your base currency: set quote to CRC with a rate, or set base to USD and configure CRC per 1 USD under Settings → Costa Rica.",
-  );
+  return params.netMonthlyCrc;
 }

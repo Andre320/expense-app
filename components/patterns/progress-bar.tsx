@@ -12,7 +12,7 @@ type Props = {
 export function ProgressBar({ pct, className }: Props) {
   const w = Math.min(100, Math.max(0, pct));
   return (
-    <div className={cn("h-2 overflow-hidden rounded-full bg-[var(--muted)]", className)}>
+    <div className={cn("h-2 overflow-hidden rounded-full bg-muted", className)}>
       <div
         className="h-full rounded-full bg-emerald-500/80 transition-all duration-500"
         style={{ width: `${w}%` }}

@@ -5,6 +5,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as React from "react";
 import { toast } from "sonner";
 import { Trash2 } from "lucide-react";
+import { PageIntro } from "@/components/patterns/page-intro";
+import { SELECT_NONE, SelectField } from "@/components/select-field";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -56,6 +58,14 @@ export function StoreMappingsPanel({ embedded }: { embedded?: boolean }) {
     [categories],
   );
 
+  const categoryOptions = React.useMemo(
+    () => [
+      { value: SELECT_NONE, label: "—" },
+      ...expenseCats.map((c) => ({ value: c.id, label: c.name })),
+    ],
+    [expenseCats],
+  );
+
   const [pattern, setPattern] = React.useState("");
   const [displayName, setDisplayName] = React.useState("");
   const [categoryId, setCategoryId] = React.useState("");
@@ -98,20 +108,23 @@ export function StoreMappingsPanel({ embedded }: { embedded?: boolean }) {
   return (
     <div className="space-y-8">
       {!embedded ? (
-        <header className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h1 className="text-2xl font-semibold tracking-tight">Store mappings</h1>
-            <p className="mt-1 max-w-2xl text-sm text-[var(--muted-fg)]">
-              Match substrings in bank descriptions (e.g. <code className="text-[11px]">MXM</code>) to a
-              clean name and expense category. Used automatically on BAC PDF import.
-            </p>
-          </div>
-          <Button variant="outline" size="sm" asChild>
-            <Link href="/settings">← Settings</Link>
-          </Button>
-        </header>
+        <PageIntro
+          title="Store mappings"
+          description={
+            <>
+              Match substrings in bank descriptions (e.g.{" "}
+              <code className="text-[11px]">MXM</code>) to a clean name and expense category.
+              Used automatically on BAC PDF import.
+            </>
+          }
+          actions={
+            <Button variant="outline" size="sm" asChild>
+              <Link href="/settings">← Settings</Link>
+            </Button>
+          }
+        />
       ) : (
-        <p className="text-sm text-[var(--muted-fg)]">
+        <p className="text-sm text-muted-foreground">
           Patterns match case-insensitive on import. Expense categories come from your category list.
         </p>
       )}
@@ -143,22 +156,14 @@ export function StoreMappingsPanel({ embedded }: { embedded?: boolean }) {
               onChange={(e) => setDisplayName(e.target.value)}
             />
           </div>
-          <div className="space-y-2 lg:min-w-[200px]">
-            <Label htmlFor="cat">Category</Label>
-            <select
-              id="cat"
-              className="flex h-9 w-full rounded-lg border border-[var(--border)] bg-[var(--card)] px-3 text-sm"
-              value={categoryId}
-              onChange={(e) => setCategoryId(e.target.value)}
-            >
-              <option value="">—</option>
-              {expenseCats.map((c) => (
-                <option key={c.id} value={c.id}>
-                  {c.name}
-                </option>
-              ))}
-            </select>
-          </div>
+          <SelectField
+            id="cat"
+            label="Category"
+            value={categoryId}
+            onValueChange={(v) => setCategoryId(v === SELECT_NONE ? "" : v)}
+            options={categoryOptions}
+            className="lg:min-w-[200px]"
+          />
           <Button
             type="button"
             disabled={!pattern.trim() || !displayName.trim() || !categoryId || createMut.isPending}
@@ -176,9 +181,9 @@ export function StoreMappingsPanel({ embedded }: { embedded?: boolean }) {
         </CardHeader>
         <CardContent>
           {isPending ? (
-            <p className="text-sm text-[var(--muted-fg)]">Loading…</p>
+            <p className="text-sm text-muted-foreground">Loading…</p>
           ) : !stores?.length ? (
-            <p className="text-sm text-[var(--muted-fg)]">No mappings yet.</p>
+            <p className="text-sm text-muted-foreground">No mappings yet.</p>
           ) : (
             <Table>
               <TableHeader>
@@ -200,7 +205,7 @@ export function StoreMappingsPanel({ embedded }: { embedded?: boolean }) {
                         type="button"
                         variant="ghost"
                         size="icon"
-                        className="text-[var(--muted-fg)] hover:text-red-400"
+                        className="text-muted-foreground hover:text-destructive"
                         aria-label="Delete mapping"
                         onClick={() => deleteMut.mutate(s.id)}
                       >

@@ -8,7 +8,7 @@ export default function CategoriesPage() {
     <div className="space-y-8">
       <Link
         href="/settings?tab=categories"
-        className="inline-block text-xs text-[var(--muted-fg)] underline-offset-4 hover:text-[var(--foreground)] hover:underline"
+        className="inline-block text-xs text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
       >
         ← Settings · Categories
       </Link>

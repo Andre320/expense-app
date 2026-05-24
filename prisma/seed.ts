@@ -9,12 +9,9 @@ async function main() {
     where: { id: "default" },
     create: {
       id: "default",
-      baseCurrency: "USD",
-      quoteCurrency: "EUR",
-      quotePerBase: "0.92",
-      currentBalanceBase: "12500",
-      monthlyIncomeBase: "8200",
-      monthlyDeductionsBase: "5400",
+      crSalaryGross: "850000",
+      crSalaryCurrency: "CRC",
+      crPayPeriod: "MONTHLY",
       crCrcPerUsd: "505",
       crSolidaristaPct: "0",
       crPensionComplementariaPct: "0",
@@ -47,7 +44,7 @@ async function main() {
   }
 
   if ((await prisma.savingsGoal.count()) === 0) {
-    await prisma.savingsGoal.create({
+    const goal = await prisma.savingsGoal.create({
       data: {
         name: "Emergency fund",
         targetAmount: "20000",
@@ -56,6 +53,110 @@ async function main() {
         priorityOrder: 1,
       },
     });
+    await prisma.savingsGoalMovement.create({
+      data: {
+        goalId: goal.id,
+        kind: "INITIAL",
+        amount: "8500",
+        description: "Already saved",
+      },
+    });
+  }
+
+  if ((await prisma.savingsAccount.count()) === 0) {
+    const account = await prisma.savingsAccount.create({
+      data: {
+        name: "Main savings",
+        currency: "CRC",
+        balance: "12000",
+        position: 1,
+      },
+    });
+    await prisma.savingsAccountMovement.create({
+      data: {
+        accountId: account.id,
+        kind: "INITIAL",
+        amount: "12000",
+        description: "Opening balance",
+      },
+    });
+  }
+
+  if ((await prisma.incomeBonus.count()) === 0) {
+    await prisma.incomeBonus.create({
+      data: {
+        name: "Aguinaldo (example)",
+        grossAmount: "200000",
+        grossCurrency: "CRC",
+        months: "[12]",
+        position: 1,
+      },
+    });
+  }
+
+  if ((await prisma.rsuPlan.count()) === 0) {
+    const { buildVestSchedule, settleVestReceive } = await import("../lib/rsu-vesting");
+    const grantDate = new Date("2022-01-01T12:00:00");
+    const exampleVestPriceUsd = 150;
+    const schedule = buildVestSchedule({
+      grantDate,
+      totalShares: 100,
+      vestingPeriodMonths: 48,
+      vestIntervalMonths: 3,
+      vestDayOfMonth: 20,
+    });
+
+    const plan = await prisma.rsuPlan.create({
+      data: {
+        name: "Plan 1 (example)",
+        ticker: "SNOW",
+        totalShares: "100",
+        grantDate,
+        vestingPeriodMonths: 48,
+        vestIntervalMonths: 3,
+        vestDayOfMonth: 20,
+        taxWithholdPct: "20",
+        position: 1,
+      },
+    });
+
+    let grossReceived = 0;
+    const targetReceived = 16;
+
+    for (const row of schedule) {
+      const receive = grossReceived < targetReceived;
+      let status: "PENDING" | "RECEIVED" = "PENDING";
+      let receivedAt: Date | undefined;
+      let sharesWithheld: string | undefined;
+      let netShares: string | undefined;
+      let cashBonusUsd: string | undefined;
+
+      if (receive) {
+        status = "RECEIVED";
+        receivedAt = row.scheduledDate;
+        const settlement = settleVestReceive(row.shares, 20, exampleVestPriceUsd);
+        sharesWithheld = String(settlement.sharesWithheld);
+        netShares = String(settlement.netWholeShares);
+        if (settlement.cashBonusUsd > 0) {
+          cashBonusUsd = String(settlement.cashBonusUsd);
+        }
+        grossReceived += row.shares;
+      }
+
+      await prisma.rsuVest.create({
+        data: {
+          planId: plan.id,
+          sequence: row.sequence,
+          scheduledDate: row.scheduledDate,
+          shares: String(row.shares),
+          status,
+          receivedAt,
+          sharesWithheld,
+          netShares,
+          cashBonusUsd,
+        },
+      });
+    }
   }
 }
 

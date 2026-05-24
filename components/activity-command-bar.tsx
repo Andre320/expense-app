@@ -19,14 +19,14 @@ export function ActivityCommandBar() {
   }
 
   return (
-    <div className="mb-10 rounded-2xl border border-[var(--border)] bg-[var(--muted)]/25 p-4 sm:p-5">
+    <div className="mb-10 rounded-2xl border border-border bg-muted/25 p-4 sm:p-5">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div>
-          <p className="text-[10px] font-semibold uppercase tracking-widest text-[var(--muted-fg)]">
+          <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">
             Activity
           </p>
           <h1 className="mt-1 text-xl font-semibold tracking-tight sm:text-2xl">Command bar</h1>
-          <p className="mt-1 max-w-xl text-sm text-[var(--muted-fg)]">
+          <p className="mt-1 max-w-xl text-sm text-muted-foreground">
             Jump to the ledger or start an import. Most day-to-day work happens here and on the
             dashboard.
           </p>
@@ -48,7 +48,7 @@ export function ActivityCommandBar() {
       </div>
       <form onSubmit={onSearch} className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center">
         <div className="relative flex-1">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[var(--muted-fg)]" />
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
             value={q}
             onChange={(e) => setQ(e.target.value)}

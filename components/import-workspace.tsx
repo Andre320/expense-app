@@ -7,10 +7,12 @@ import * as React from "react";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import { PageIntro } from "@/components/patterns/page-intro";
+import { SELECT_NONE, SelectField } from "@/components/select-field";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
   TableBody,
@@ -194,6 +196,14 @@ export function ImportWorkspace({ hideIntro }: ImportWorkspaceProps) {
     importMut.mutate(rows);
   }
 
+  const headerOptions = React.useMemo(
+    () => [
+      { value: SELECT_NONE, label: "—" },
+      ...headers.map((h) => ({ value: h, label: h })),
+    ],
+    [headers],
+  );
+
   return (
     <div className="space-y-8">
       {!hideIntro ? (
@@ -206,7 +216,7 @@ export function ImportWorkspace({ hideIntro }: ImportWorkspaceProps) {
               preview.{" "}
               <Link
                 href="/settings?tab=stores"
-                className="font-medium text-[var(--foreground)] underline-offset-4 hover:underline"
+                className="font-medium text-foreground underline-offset-4 hover:underline"
               >
                 Store mappings
               </Link>{" "}
@@ -224,21 +234,17 @@ export function ImportWorkspace({ hideIntro }: ImportWorkspaceProps) {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="max-w-xs space-y-2">
-            <Label htmlFor="bank">Statement bank</Label>
-            <select
-              id="bank"
-              className="flex h-9 w-full rounded-lg border border-[var(--border)] bg-[var(--card)] px-3 text-sm"
-              value={bank}
-              onChange={(e) => {
-                const v = e.target.value as "BAC";
-                setBank(v);
-                setBacPreview([]);
-              }}
-            >
-              <option value="BAC">BAC (Costa Rica)</option>
-            </select>
-          </div>
+          <SelectField
+            id="bank"
+            label="Statement bank"
+            value={bank}
+            onValueChange={(v) => {
+              setBank(v as "BAC");
+              setBacPreview([]);
+            }}
+            options={[{ value: "BAC", label: "BAC (Costa Rica)" }]}
+            className="max-w-xs"
+          />
         </CardContent>
       </Card>
 
@@ -264,30 +270,25 @@ export function ImportWorkspace({ hideIntro }: ImportWorkspaceProps) {
               {headers.length > 0 && (
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                   {INTERNAL.map((key) => (
-                    <div key={key} className="space-y-1">
-                      <Label className="text-[10px] uppercase tracking-wider text-[var(--muted-fg)]">
-                        {key}
-                      </Label>
-                      <select
-                        className="flex h-9 w-full rounded-lg border border-[var(--border)] bg-[var(--card)] px-2 text-xs"
-                        value={mapping[key] ?? ""}
-                        onChange={(e) =>
-                          setMapping((m) => ({ ...m, [key]: e.target.value || undefined }))
-                        }
-                      >
-                        <option value="">—</option>
-                        {headers.map((h) => (
-                          <option key={h} value={h}>
-                            {h}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
+                    <SelectField
+                      key={key}
+                      label={key}
+                      value={mapping[key] ?? ""}
+                      onValueChange={(v) =>
+                        setMapping((m) => ({
+                          ...m,
+                          [key]: v === SELECT_NONE ? undefined : v,
+                        }))
+                      }
+                      options={headerOptions}
+                      triggerClassName="text-xs"
+                      className="space-y-1 [&_label]:text-[10px] [&_label]:uppercase [&_label]:tracking-wider [&_label]:text-muted-foreground"
+                    />
                   ))}
                 </div>
               )}
               {csvRows.length > 0 && (
-                <div className="flex flex-wrap items-center gap-3 text-xs text-[var(--muted-fg)]">
+                <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
                   <span>{csvRows.length} rows detected</span>
                   <Button
                     type="button"
@@ -331,7 +332,10 @@ export function ImportWorkspace({ hideIntro }: ImportWorkspaceProps) {
                   />
                 </div>
                 {bacParseMut.isPending && (
-                  <p className="text-xs text-[var(--muted-fg)]">Parsing PDF…</p>
+                  <div className="space-y-2">
+                    <Skeleton className="h-4 w-32" />
+                    <Skeleton className="h-24 w-full" />
+                  </div>
                 )}
               </CardContent>
             </Card>
@@ -375,13 +379,13 @@ export function ImportWorkspace({ hideIntro }: ImportWorkspaceProps) {
                             {format(new Date(r.occurredAt), "yyyy-MM-dd")}
                           </TableCell>
                           <TableCell className="font-mono text-xs">{r.reference}</TableCell>
-                          <TableCell className="max-w-[140px] truncate text-xs text-[var(--muted-fg)]">
+                          <TableCell className="max-w-[140px] truncate text-xs text-muted-foreground">
                             {r.bankDescription}
                           </TableCell>
                           <TableCell className="max-w-[140px] truncate text-xs">
                             {r.displayName}
                             {r.matchedPattern ? (
-                              <span className="ml-1 text-[10px] text-[var(--muted-fg)]">
+                              <span className="ml-1 text-[10px] text-muted-foreground">
                                 ({r.matchedPattern})
                               </span>
                             ) : null}
@@ -396,7 +400,7 @@ export function ImportWorkspace({ hideIntro }: ImportWorkspaceProps) {
                               maximumFractionDigits: 2,
                             })}
                           </TableCell>
-                          <TableCell className="text-right text-xs tabular-nums text-[var(--muted-fg)]">
+                          <TableCell className="text-right text-xs tabular-nums text-muted-foreground">
                             {r.amountColones != null
                               ? r.amountColones.toLocaleString(undefined, {
                                   minimumFractionDigits: 2,
@@ -404,7 +408,7 @@ export function ImportWorkspace({ hideIntro }: ImportWorkspaceProps) {
                                 })
                               : "—"}
                           </TableCell>
-                          <TableCell className="text-right text-xs tabular-nums text-[var(--muted-fg)]">
+                          <TableCell className="text-right text-xs tabular-nums text-muted-foreground">
                             {r.amountDollars != null
                               ? r.amountDollars.toLocaleString(undefined, {
                                   minimumFractionDigits: 2,
@@ -433,7 +437,7 @@ export function ImportWorkspace({ hideIntro }: ImportWorkspaceProps) {
                   <Input id="pdf" type="file" accept="application/pdf" onChange={onPdfGeneric} />
                 </div>
                 {pdfPages > 0 && (
-                  <p className="text-xs text-[var(--muted-fg)]">{pdfPages} page(s)</p>
+                  <p className="text-xs text-muted-foreground">{pdfPages} page(s)</p>
                 )}
                 <Textarea
                   readOnly
