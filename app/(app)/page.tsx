@@ -1,7 +1,7 @@
-"use client";
+"use client"
 
-import Link from "next/link";
-import { useQuery } from "@tanstack/react-query";
+import Link from "next/link"
+import { useQuery } from "@tanstack/react-query"
 import {
   Bar,
   BarChart,
@@ -11,101 +11,96 @@ import {
   Tooltip,
   XAxis,
   YAxis,
-} from "recharts";
-import { ForecastMilestones } from "@/components/forecast-milestones";
-import { MetricStat } from "@/components/patterns/metric-stat";
-import { PageIntro } from "@/components/patterns/page-intro";
-import { RecentLedger } from "@/components/recent-ledger";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+} from "recharts"
+import { ForecastMilestones } from "@/components/forecast-milestones"
+import { MetricStat } from "@/components/patterns/metric-stat"
+import { PageIntro } from "@/components/patterns/page-intro"
+import { RecentLedger } from "@/components/recent-ledger"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import {
   goalsForForecast,
   monthlySurplusForForecast,
   savingsGoalMilestones,
   type SavingsGoalForecastInput,
-} from "@/lib/forecast-planning";
-import { rechartsTooltipContentStyle } from "@/lib/chart-style";
-import { REPORTING_CURRENCY } from "@/lib/app-currency";
-import { formatMoneyBase } from "@/lib/format-money";
-import { MONTH_LABELS } from "@/components/income-bonuses-manager";
+} from "@/lib/forecast-planning"
+import { rechartsTooltipContentStyle } from "@/lib/chart-style"
+import { REPORTING_CURRENCY } from "@/lib/app-currency"
+import { formatMoneyBase } from "@/lib/format-money"
+import { MONTH_LABELS } from "@/components/income-bonuses-manager"
 
 type Summary = {
-  monthly: { month: string; income: number; expense: number }[];
-  burnRate3Mo: number;
-  savingsTotal: number;
-  savingsAccountsTotal?: number;
-  expectedMonthlyIncomeBase: number;
-  ledgerNetBalance: number;
-  hasSalaryProfile: boolean;
-  reportingCurrency: string;
-  forecastCalendarMonth: number;
-  activeBonusesThisMonth: { name: string; grossAmountCrc: number }[];
+  monthly: { month: string; income: number; expense: number }[]
+  burnRate3Mo: number
+  savingsTotal: number
+  savingsAccountsTotal?: number
+  expectedMonthlyIncomeBase: number
+  ledgerNetBalance: number
+  hasSalaryProfile: boolean
+  reportingCurrency: string
+  forecastCalendarMonth: number
+  activeBonusesThisMonth: { name: string; grossAmountCrc: number }[]
   settings: {
-    crCrcPerUsd: number;
-  };
-};
+    crCrcPerUsd: number
+  }
+}
 
 async function fetchSummary(): Promise<Summary> {
-  const res = await fetch("/api/analytics/summary");
-  if (!res.ok) throw new Error("Failed to load summary");
-  return res.json();
+  const res = await fetch("/api/analytics/summary")
+  if (!res.ok) throw new Error("Failed to load summary")
+  return res.json()
 }
 
 async function fetchGoals(): Promise<SavingsGoalForecastInput[]> {
-  const res = await fetch("/api/savings");
-  if (!res.ok) throw new Error("goals");
-  return res.json();
+  const res = await fetch("/api/savings")
+  if (!res.ok) throw new Error("goals")
+  return res.json()
 }
 
 export default function DashboardPage() {
   const { data, isPending, isError } = useQuery({
     queryKey: ["analytics", "summary"],
     queryFn: fetchSummary,
-  });
+  })
   const { data: goals } = useQuery({
     queryKey: ["savings"],
     queryFn: fetchGoals,
-  });
+  })
 
   if (isPending) {
-    return <div className="text-sm text-muted-foreground">Loading dashboard…</div>;
+    return <div className="text-muted-foreground text-sm">Loading dashboard…</div>
   }
   if (isError || !data) {
     return (
       <div className="text-sm text-red-400">
         Could not load analytics. Is the database migrated?
       </div>
-    );
+    )
   }
 
-  const bc = data.reportingCurrency ?? REPORTING_CURRENCY;
+  const bc = data.reportingCurrency ?? REPORTING_CURRENCY
   const chartData = data.monthly.map((m) => ({
     ...m,
     label: m.month.slice(5),
-  }));
+  }))
 
   const netLast =
     data.monthly.length > 0
       ? data.monthly[data.monthly.length - 1]!.income -
         data.monthly[data.monthly.length - 1]!.expense
-      : 0;
+      : 0
 
-  const surplus = monthlySurplusForForecast(
-    data.expectedMonthlyIncomeBase,
-    data.burnRate3Mo,
-  );
-  const crcPerUsd = data.settings?.crCrcPerUsd ?? 505;
+  const surplus = monthlySurplusForForecast(data.expectedMonthlyIncomeBase, data.burnRate3Mo)
+  const crcPerUsd = data.settings?.crCrcPerUsd ?? 505
   const milestones =
-    goals && goals.length
-      ? savingsGoalMilestones(goalsForForecast(goals, crcPerUsd), surplus)
-      : [];
+    goals && goals.length ? savingsGoalMilestones(goalsForForecast(goals, crcPerUsd), surplus) : []
 
   const monthLabel =
     data.forecastCalendarMonth >= 1 && data.forecastCalendarMonth <= 12
       ? MONTH_LABELS[data.forecastCalendarMonth - 1]
-      : undefined;
-  const bonusNames = (data.activeBonusesThisMonth ?? []).map((b) => b.name);
+      : undefined
+  const bonusNames = (data.activeBonusesThisMonth ?? []).map((b) => b.name)
 
   return (
     <div className="space-y-10">
@@ -129,10 +124,13 @@ export default function DashboardPage() {
       />
 
       {!data.hasSalaryProfile ? (
-        <Card className="border-dashed border-border bg-muted/10">
-          <CardContent className="py-4 text-sm text-muted-foreground">
+        <Card className="border-border bg-muted/10 border-dashed">
+          <CardContent className="text-muted-foreground py-4 text-sm">
             No salary profile saved yet. Set up gross salary and deductions on the{" "}
-            <Link href="/income" className="font-medium text-foreground underline-offset-2 hover:underline">
+            <Link
+              href="/income"
+              className="text-foreground font-medium underline-offset-2 hover:underline"
+            >
               Income
             </Link>{" "}
             tab to enable planned surplus forecasting.
@@ -140,7 +138,7 @@ export default function DashboardPage() {
         </Card>
       ) : null}
 
-      <Card className="border-dashed border-border bg-muted/10">
+      <Card className="border-border bg-muted/10 border-dashed">
         <CardHeader className="pb-2">
           <CardTitle className="text-base">Planned surplus</CardTitle>
           <CardDescription>
@@ -148,10 +146,8 @@ export default function DashboardPage() {
             <Link href="/income" className="underline-offset-2 hover:underline">
               Income
             </Link>
-            {bonusNames.length > 0 ? (
-              <> — includes {bonusNames.join(", ")}</>
-            ) : null}
-            ) minus trailing 3-month average expenses from{" "}
+            {bonusNames.length > 0 ? <> — includes {bonusNames.join(", ")}</> : null}) minus
+            trailing 3-month average expenses from{" "}
             <Link href="/activity" className="underline-offset-2 hover:underline">
               Activity
             </Link>
@@ -187,7 +183,7 @@ export default function DashboardPage() {
               {formatMoneyBase(data.ledgerNetBalance, bc)}
             </CardTitle>
           </CardHeader>
-          <CardContent className="text-xs text-muted-foreground">
+          <CardContent className="text-muted-foreground text-xs">
             All-time income − expenses (Activity)
           </CardContent>
         </Card>
@@ -198,7 +194,7 @@ export default function DashboardPage() {
               {formatMoneyBase(data.savingsAccountsTotal ?? 0, bc)}
             </CardTitle>
           </CardHeader>
-          <CardContent className="text-xs text-muted-foreground">
+          <CardContent className="text-muted-foreground text-xs">
             <Link href="/savings" className="underline-offset-2 hover:underline">
               Actual balances
             </Link>
@@ -211,7 +207,7 @@ export default function DashboardPage() {
               {formatMoneyBase(data.burnRate3Mo, bc)}
             </CardTitle>
           </CardHeader>
-          <CardContent className="text-xs text-muted-foreground">Ledger burn rate</CardContent>
+          <CardContent className="text-muted-foreground text-xs">Ledger burn rate</CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
@@ -231,7 +227,7 @@ export default function DashboardPage() {
               {formatMoneyBase(data.savingsTotal, bc)}
             </CardTitle>
           </CardHeader>
-          <CardContent className="text-xs text-muted-foreground">
+          <CardContent className="text-muted-foreground text-xs">
             <Link href="/savings" className="underline-offset-2 hover:underline">
               Across goals
             </Link>
@@ -292,8 +288,8 @@ export default function DashboardPage() {
               <Tooltip
                 contentStyle={rechartsTooltipContentStyle}
                 labelFormatter={(_, p) => {
-                  const pl = p?.[0]?.payload as { month?: string } | undefined;
-                  return pl?.month ?? "";
+                  const pl = p?.[0]?.payload as { month?: string } | undefined
+                  return pl?.month ?? ""
                 }}
               />
               <Legend wrapperStyle={{ fontSize: 12 }} />
@@ -314,5 +310,5 @@ export default function DashboardPage() {
         </CardContent>
       </Card>
     </div>
-  );
+  )
 }

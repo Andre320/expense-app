@@ -1,25 +1,22 @@
-import "server-only";
-import { PrismaClient } from "@/app/generated/prisma/client";
-import { createSqliteAdapter } from "@/lib/prisma-adapter";
+import "server-only"
+import { PrismaClient } from "@/app/generated/prisma/client"
+import { createSqliteAdapter } from "@/lib/prisma-adapter"
 
 const globalForPrisma = globalThis as unknown as {
-  prisma?: PrismaClient;
-};
+  prisma?: PrismaClient
+}
 
-const adapter = createSqliteAdapter();
+const adapter = createSqliteAdapter()
 
 export const prisma =
   globalForPrisma.prisma ??
   new PrismaClient({
     adapter,
-    log:
-      process.env.NODE_ENV === "development"
-        ? ["error", "warn"]
-        : ["error"],
-  });
+    log: process.env.NODE_ENV === "development" ? ["error", "warn"] : ["error"],
+  })
 
 if (process.env.NODE_ENV !== "production") {
-  globalForPrisma.prisma = prisma;
+  globalForPrisma.prisma = prisma
 }
 
 export async function ensureAppDefaults() {
@@ -27,7 +24,7 @@ export async function ensureAppDefaults() {
     where: { id: "default" },
     create: { id: "default" },
     update: {},
-  });
+  })
 
   await prisma.category.upsert({
     where: { name_kind: { name: "Uncategorized", kind: "EXPENSE" } },
@@ -38,5 +35,5 @@ export async function ensureAppDefaults() {
       color: "#71717a",
     },
     update: {},
-  });
+  })
 }

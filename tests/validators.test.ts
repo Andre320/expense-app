@@ -1,9 +1,5 @@
-import { describe, expect, it } from "vitest";
-import {
-  csvImportZ,
-  settingsPatchZ,
-  transactionCreateZ,
-} from "@/lib/validators";
+import { describe, expect, it } from "vitest"
+import { csvImportZ, settingsPatchZ, transactionCreateZ } from "@/lib/validators"
 
 describe("csvImportZ", () => {
   it("accepts a minimal valid payload", () => {
@@ -16,14 +12,14 @@ describe("csvImportZ", () => {
           currencyCode: "USD",
         },
       ],
-    });
-    expect(r.success).toBe(true);
-  });
+    })
+    expect(r.success).toBe(true)
+  })
 
   it("rejects empty rows array", () => {
-    const r = csvImportZ.safeParse({ rows: [] });
-    expect(r.success).toBe(false);
-  });
+    const r = csvImportZ.safeParse({ rows: [] })
+    expect(r.success).toBe(false)
+  })
 
   it("rejects more than 5000 rows", () => {
     const r = csvImportZ.safeParse({
@@ -33,9 +29,9 @@ describe("csvImportZ", () => {
         amountOriginal: 1,
         currencyCode: "USD",
       })),
-    });
-    expect(r.success).toBe(false);
-  });
+    })
+    expect(r.success).toBe(false)
+  })
 
   it("rejects non-positive amount", () => {
     const r = csvImportZ.safeParse({
@@ -47,9 +43,9 @@ describe("csvImportZ", () => {
           currencyCode: "USD",
         },
       ],
-    });
-    expect(r.success).toBe(false);
-  });
+    })
+    expect(r.success).toBe(false)
+  })
 
   it("rejects invalid currency code length", () => {
     const r = csvImportZ.safeParse({
@@ -61,10 +57,10 @@ describe("csvImportZ", () => {
           currencyCode: "US",
         },
       ],
-    });
-    expect(r.success).toBe(false);
-  });
-});
+    })
+    expect(r.success).toBe(false)
+  })
+})
 
 describe("transactionCreateZ", () => {
   it("accepts valid transaction", () => {
@@ -73,10 +69,10 @@ describe("transactionCreateZ", () => {
       kind: "INCOME",
       amountOriginal: 100,
       currencyCode: "CRC",
-    });
-    expect(r.success).toBe(true);
-    if (r.success) expect(r.data.description).toBe("");
-  });
+    })
+    expect(r.success).toBe(true)
+    if (r.success) expect(r.data.description).toBe("")
+  })
 
   it("rejects empty occurredAt", () => {
     const r = transactionCreateZ.safeParse({
@@ -84,9 +80,9 @@ describe("transactionCreateZ", () => {
       kind: "EXPENSE",
       amountOriginal: 1,
       currencyCode: "USD",
-    });
-    expect(r.success).toBe(false);
-  });
+    })
+    expect(r.success).toBe(false)
+  })
 
   it("rejects invalid kind", () => {
     const r = transactionCreateZ.safeParse({
@@ -94,15 +90,15 @@ describe("transactionCreateZ", () => {
       kind: "OTHER",
       amountOriginal: 1,
       currencyCode: "USD",
-    });
-    expect(r.success).toBe(false);
-  });
-});
+    })
+    expect(r.success).toBe(false)
+  })
+})
 
 describe("settingsPatchZ", () => {
   it("accepts empty patch", () => {
-    expect(settingsPatchZ.safeParse({}).success).toBe(true);
-  });
+    expect(settingsPatchZ.safeParse({}).success).toBe(true)
+  })
 
   it("accepts partial salary profile fields", () => {
     const r = settingsPatchZ.safeParse({
@@ -110,17 +106,17 @@ describe("settingsPatchZ", () => {
       crSalaryCurrency: "CRC",
       crPayPeriod: "MONTHLY",
       crSolidaristaPct: 1.5,
-    });
-    expect(r.success).toBe(true);
-  });
+    })
+    expect(r.success).toBe(true)
+  })
 
   it("rejects crCrcPerUsd that is not positive", () => {
-    const r = settingsPatchZ.safeParse({ crCrcPerUsd: 0 });
-    expect(r.success).toBe(false);
-  });
+    const r = settingsPatchZ.safeParse({ crCrcPerUsd: 0 })
+    expect(r.success).toBe(false)
+  })
 
   it("rejects pct out of range", () => {
-    expect(settingsPatchZ.safeParse({ crEsppPct: 101 }).success).toBe(false);
-    expect(settingsPatchZ.safeParse({ crEsppPct: -1 }).success).toBe(false);
-  });
-});
+    expect(settingsPatchZ.safeParse({ crEsppPct: 101 }).success).toBe(false)
+    expect(settingsPatchZ.safeParse({ crEsppPct: -1 }).success).toBe(false)
+  })
+})

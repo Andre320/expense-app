@@ -41,19 +41,17 @@ function AppSidebar() {
 
   return (
     <Sidebar collapsible="icon">
-      <SidebarHeader className="border-b border-sidebar-border">
+      <SidebarHeader className="border-sidebar-border border-b">
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton size="lg" asChild>
               <Link href="/">
-                <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-accent text-sidebar-accent-foreground">
+                <div className="bg-sidebar-accent text-sidebar-accent-foreground flex aspect-square size-8 items-center justify-center rounded-lg">
                   <ArrowLeftRight className="size-4" />
                 </div>
                 <div className="grid flex-1 text-left text-sm leading-tight">
                   <span className="truncate font-semibold">Expense</span>
-                  <span className="truncate text-xs text-muted-foreground">
-                    Local workspace
-                  </span>
+                  <span className="text-muted-foreground truncate text-xs">Local workspace</span>
                 </div>
               </Link>
             </SidebarMenuButton>
@@ -86,8 +84,8 @@ function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
-      <SidebarFooter className="border-t border-sidebar-border">
-        <p className="px-2 py-2 text-[10px] leading-relaxed text-muted-foreground">
+      <SidebarFooter className="border-sidebar-border border-t">
+        <p className="text-muted-foreground px-2 py-2 text-[10px] leading-relaxed">
           SQLite + Prisma · data stays on device
         </p>
       </SidebarFooter>
@@ -100,7 +98,7 @@ export function SiteShell({ children }: { children: React.ReactNode }) {
     <SidebarProvider defaultOpen>
       <AppSidebar />
       <SidebarInset>
-        <header className="flex h-12 shrink-0 items-center gap-2 border-b border-border px-4 md:hidden">
+        <header className="border-border flex h-12 shrink-0 items-center gap-2 border-b px-4 md:hidden">
           <SidebarTrigger className="-ml-1" />
           <Separator orientation="vertical" className="mr-2 h-4" />
           <span className="text-sm font-medium">Expense</span>

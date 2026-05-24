@@ -4,5 +4,5 @@ export function formatMoneyBase(amount: number, currency: string): string {
     style: "currency",
     currency,
     maximumFractionDigits: 0,
-  }).format(amount);
+  }).format(amount)
 }

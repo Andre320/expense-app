@@ -4,4 +4,4 @@ export {
   parseBCompraLine,
   parseBacComprasDelPeriodo,
   type BacCompraRow,
-} from "@/lib/parsers/bacParser";
+} from "@/lib/parsers/bacParser"

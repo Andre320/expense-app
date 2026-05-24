@@ -1,6 +1,6 @@
-import { roundMoney } from "./currency";
+import { roundMoney } from "./currency"
 
-export type SavingsMovementKind = "DEPOSIT" | "WITHDRAWAL" | "ADJUSTMENT" | "INITIAL";
+export type SavingsMovementKind = "DEPOSIT" | "WITHDRAWAL" | "ADJUSTMENT" | "INITIAL"
 
 /** Apply a movement to a balance. For ADJUSTMENT, `amount` is the new absolute balance. */
 export function applyMovementToBalance(
@@ -8,20 +8,20 @@ export function applyMovementToBalance(
   kind: SavingsMovementKind,
   amount: number,
 ): number {
-  if (amount < 0) throw new Error("Amount must be non-negative");
+  if (amount < 0) throw new Error("Amount must be non-negative")
   switch (kind) {
     case "DEPOSIT":
     case "INITIAL":
-      return roundMoney(currentBalance + amount);
+      return roundMoney(currentBalance + amount)
     case "WITHDRAWAL": {
-      const next = roundMoney(currentBalance - amount);
-      if (next < 0) throw new Error("Insufficient balance");
-      return next;
+      const next = roundMoney(currentBalance - amount)
+      if (next < 0) throw new Error("Insufficient balance")
+      return next
     }
     case "ADJUSTMENT":
-      return roundMoney(amount);
+      return roundMoney(amount)
     default:
-      throw new Error("Unknown movement kind");
+      throw new Error("Unknown movement kind")
   }
 }
 
@@ -30,19 +30,19 @@ export function movementDelta(
   kind: SavingsMovementKind,
   amount: number,
 ): number {
-  const next = applyMovementToBalance(currentBalance, kind, amount);
-  return roundMoney(next - currentBalance);
+  const next = applyMovementToBalance(currentBalance, kind, amount)
+  return roundMoney(next - currentBalance)
 }
 
 export function movementKindLabel(kind: SavingsMovementKind): string {
   switch (kind) {
     case "DEPOSIT":
-      return "Deposit";
+      return "Deposit"
     case "WITHDRAWAL":
-      return "Withdrawal";
+      return "Withdrawal"
     case "ADJUSTMENT":
-      return "Adjustment";
+      return "Adjustment"
     case "INITIAL":
-      return "Opening balance";
+      return "Opening balance"
   }
 }

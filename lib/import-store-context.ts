@@ -1,10 +1,10 @@
-import "server-only";
-import { prisma } from "@/lib/db";
-import type { StoreMappingRule } from "@/lib/store-mapping";
+import "server-only"
+import { prisma } from "@/lib/db"
+import type { StoreMappingRule } from "@/lib/store-mapping"
 
 export async function loadStoreMappingContext(): Promise<{
-  rules: StoreMappingRule[];
-  uncategorizedCategoryId: string;
+  rules: StoreMappingRule[]
+  uncategorizedCategoryId: string
 }> {
   const [stores, uncategorized] = await Promise.all([
     prisma.knownStore.findMany({
@@ -21,10 +21,10 @@ export async function loadStoreMappingContext(): Promise<{
       where: { name_kind: { name: "Uncategorized", kind: "EXPENSE" } },
       select: { id: true },
     }),
-  ]);
+  ])
 
   if (!uncategorized) {
-    throw new Error("Uncategorized expense category missing; run migrations / ensureDefaults");
+    throw new Error("Uncategorized expense category missing; run migrations / ensureDefaults")
   }
 
   return {
@@ -36,5 +36,5 @@ export async function loadStoreMappingContext(): Promise<{
       position: s.position,
     })),
     uncategorizedCategoryId: uncategorized.id,
-  };
+  }
 }

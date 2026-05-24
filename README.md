@@ -59,12 +59,12 @@ Open [http://localhost:3000](http://localhost:3000).
 
 The app uses **SQLite** via Prisma 7 with the `better-sqlite3` driver adapter. Data is stored in a single local file (`dev.db` by default).
 
-| Script | Purpose |
-|--------|---------|
-| `pnpm run db:migrate` | Apply schema changes interactively (creates new migration files) |
-| `pnpm run db:push` | Push schema to DB without creating a migration (prototyping only) |
-| `pnpm run db:seed` | Load optional demo data |
-| `pnpm run db:setup` | Apply existing migrations + seed (good for first-time setup) |
+| Script                | Purpose                                                           |
+| --------------------- | ----------------------------------------------------------------- |
+| `pnpm run db:migrate` | Apply schema changes interactively (creates new migration files)  |
+| `pnpm run db:push`    | Push schema to DB without creating a migration (prototyping only) |
+| `pnpm run db:seed`    | Load optional demo data                                           |
+| `pnpm run db:setup`   | Apply existing migrations + seed (good for first-time setup)      |
 
 ### Schema changes
 

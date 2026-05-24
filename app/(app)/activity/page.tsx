@@ -1,7 +1,7 @@
-"use client";
+"use client"
 
-import { ActivityCommandBar } from "@/components/activity-command-bar";
-import { ImportWorkspace } from "@/components/import-workspace";
+import { ActivityCommandBar } from "@/components/activity-command-bar"
+import { ImportWorkspace } from "@/components/import-workspace"
 
 export default function ActivityPage() {
   return (
@@ -11,5 +11,5 @@ export default function ActivityPage() {
         <ImportWorkspace hideIntro />
       </div>
     </div>
-  );
+  )
 }

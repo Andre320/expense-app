@@ -1,25 +1,25 @@
-"use client";
+"use client"
 
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import * as React from "react";
-import { toast } from "sonner";
-import { Trash2 } from "lucide-react";
-import { SelectField } from "@/components/select-field";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
-import { bonusGrossToMonthlyCrc } from "@/lib/income-bonus";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import * as React from "react"
+import { toast } from "sonner"
+import { Trash2 } from "lucide-react"
+import { SelectField } from "@/components/select-field"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Badge } from "@/components/ui/badge"
+import { bonusGrossToMonthlyCrc } from "@/lib/income-bonus"
 
 export type IncomeBonusDto = {
-  id: string;
-  name: string;
-  grossAmount: number;
-  grossCurrency: string;
-  months: number[];
-  position: number;
-};
+  id: string
+  name: string
+  grossAmount: number
+  grossCurrency: string
+  months: number[]
+  position: number
+}
 
 const MONTH_LABELS = [
   "Ene",
@@ -34,48 +34,48 @@ const MONTH_LABELS = [
   "Oct",
   "Nov",
   "Dic",
-] as const;
+] as const
 
 const CURRENCY_OPTIONS = [
   { value: "CRC", label: "CRC" },
   { value: "USD", label: "USD" },
-] as const;
+] as const
 
 async function fetchBonuses(): Promise<IncomeBonusDto[]> {
-  const res = await fetch("/api/income-bonuses");
-  if (!res.ok) throw new Error("bonuses");
-  return res.json();
+  const res = await fetch("/api/income-bonuses")
+  if (!res.ok) throw new Error("bonuses")
+  return res.json()
 }
 
 function formatGross(b: IncomeBonusDto, crcPerUsd: number) {
   if (b.grossCurrency === "USD") {
-    const crc = bonusGrossToMonthlyCrc(b, crcPerUsd);
-    return `$${b.grossAmount.toLocaleString()} (≈ ₡${Math.round(crc).toLocaleString()})`;
+    const crc = bonusGrossToMonthlyCrc(b, crcPerUsd)
+    return `$${b.grossAmount.toLocaleString()} (≈ ₡${Math.round(crc).toLocaleString()})`
   }
-  return `₡${b.grossAmount.toLocaleString()}`;
+  return `₡${b.grossAmount.toLocaleString()}`
 }
 
 type IncomeBonusesManagerProps = {
-  crcPerUsd?: number;
-  embedded?: boolean;
-};
+  crcPerUsd?: number
+  embedded?: boolean
+}
 
 export function IncomeBonusesManager({ crcPerUsd = 505, embedded }: IncomeBonusesManagerProps) {
-  const qc = useQueryClient();
+  const qc = useQueryClient()
   const { data, isPending } = useQuery({
     queryKey: ["income-bonuses"],
     queryFn: fetchBonuses,
-  });
+  })
 
-  const [name, setName] = React.useState("");
-  const [gross, setGross] = React.useState("");
-  const [currency, setCurrency] = React.useState<"CRC" | "USD">("CRC");
-  const [selectedMonths, setSelectedMonths] = React.useState<number[]>([]);
+  const [name, setName] = React.useState("")
+  const [gross, setGross] = React.useState("")
+  const [currency, setCurrency] = React.useState<"CRC" | "USD">("CRC")
+  const [selectedMonths, setSelectedMonths] = React.useState<number[]>([])
 
   function toggleMonth(m: number) {
     setSelectedMonths((prev) =>
       prev.includes(m) ? prev.filter((x) => x !== m) : [...prev, m].sort((a, b) => a - b),
-    );
+    )
   }
 
   const createMut = useMutation({
@@ -89,47 +89,48 @@ export function IncomeBonusesManager({ crcPerUsd = 505, embedded }: IncomeBonuse
           grossCurrency: currency,
           months: selectedMonths,
         }),
-      });
-      if (!res.ok) throw new Error("fail");
-      return res.json();
+      })
+      if (!res.ok) throw new Error("fail")
+      return res.json()
     },
     onSuccess: () => {
-      toast.success("Bonus added");
-      setName("");
-      setGross("");
-      setCurrency("CRC");
-      setSelectedMonths([]);
-      qc.invalidateQueries({ queryKey: ["income-bonuses"] });
-      qc.invalidateQueries({ queryKey: ["analytics"] });
+      toast.success("Bonus added")
+      setName("")
+      setGross("")
+      setCurrency("CRC")
+      setSelectedMonths([])
+      qc.invalidateQueries({ queryKey: ["income-bonuses"] })
+      qc.invalidateQueries({ queryKey: ["analytics"] })
     },
     onError: () => toast.error("Could not add bonus"),
-  });
+  })
 
   const deleteMut = useMutation({
     mutationFn: async (id: string) => {
-      const res = await fetch(`/api/income-bonuses/${id}`, { method: "DELETE" });
-      if (!res.ok) throw new Error("fail");
+      const res = await fetch(`/api/income-bonuses/${id}`, { method: "DELETE" })
+      if (!res.ok) throw new Error("fail")
     },
     onSuccess: () => {
-      toast.success("Bonus removed");
-      qc.invalidateQueries({ queryKey: ["income-bonuses"] });
-      qc.invalidateQueries({ queryKey: ["analytics"] });
+      toast.success("Bonus removed")
+      qc.invalidateQueries({ queryKey: ["income-bonuses"] })
+      qc.invalidateQueries({ queryKey: ["analytics"] })
     },
     onError: () => toast.error("Delete failed"),
-  });
+  })
 
   const sorted = React.useMemo(
     () => [...(data ?? [])].sort((a, b) => a.position - b.position || a.name.localeCompare(b.name)),
     [data],
-  );
+  )
 
   return (
     <div className="space-y-6">
       {!embedded ? (
         <header>
           <h2 className="text-lg font-semibold tracking-tight">Fixed bonuses</h2>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Gross amounts applied in selected months each year. Taxed together with salary that month.
+          <p className="text-muted-foreground mt-1 text-sm">
+            Gross amounts applied in selected months each year. Taxed together with salary that
+            month.
           </p>
         </header>
       ) : null}
@@ -175,8 +176,8 @@ export function IncomeBonusesManager({ crcPerUsd = 505, embedded }: IncomeBonuse
             <Label>Months (each year)</Label>
             <div className="flex flex-wrap gap-2">
               {MONTH_LABELS.map((label, i) => {
-                const month = i + 1;
-                const on = selectedMonths.includes(month);
+                const month = i + 1
+                const on = selectedMonths.includes(month)
                 return (
                   <Button
                     key={month}
@@ -187,7 +188,7 @@ export function IncomeBonusesManager({ crcPerUsd = 505, embedded }: IncomeBonuse
                   >
                     {label}
                   </Button>
-                );
+                )
               })}
             </div>
           </div>
@@ -214,19 +215,19 @@ export function IncomeBonusesManager({ crcPerUsd = 505, embedded }: IncomeBonuse
         </CardHeader>
         <CardContent>
           {isPending ? (
-            <p className="text-sm text-muted-foreground">Loading…</p>
+            <p className="text-muted-foreground text-sm">Loading…</p>
           ) : sorted.length === 0 ? (
-            <p className="text-sm text-muted-foreground">No bonuses yet.</p>
+            <p className="text-muted-foreground text-sm">No bonuses yet.</p>
           ) : (
             <ul className="space-y-3">
               {sorted.map((b) => (
                 <li
                   key={b.id}
-                  className="flex flex-col gap-2 rounded-lg border border-border p-3 sm:flex-row sm:items-center sm:justify-between"
+                  className="border-border flex flex-col gap-2 rounded-lg border p-3 sm:flex-row sm:items-center sm:justify-between"
                 >
                   <div>
                     <p className="font-medium">{b.name}</p>
-                    <p className="text-sm tabular-nums text-muted-foreground">
+                    <p className="text-muted-foreground text-sm tabular-nums">
                       {formatGross(b, crcPerUsd)} gross
                     </p>
                     <div className="mt-2 flex flex-wrap gap-1">
@@ -241,7 +242,7 @@ export function IncomeBonusesManager({ crcPerUsd = 505, embedded }: IncomeBonuse
                     type="button"
                     variant="ghost"
                     size="icon"
-                    className="shrink-0 text-muted-foreground hover:text-destructive"
+                    className="text-muted-foreground hover:text-destructive shrink-0"
                     onClick={() => deleteMut.mutate(b.id)}
                     disabled={deleteMut.isPending}
                     aria-label={`Delete ${b.name}`}
@@ -255,7 +256,7 @@ export function IncomeBonusesManager({ crcPerUsd = 505, embedded }: IncomeBonuse
         </CardContent>
       </Card>
     </div>
-  );
+  )
 }
 
-export { MONTH_LABELS };
+export { MONTH_LABELS }

@@ -1,5 +1,5 @@
-import { redirect } from "next/navigation";
+import { redirect } from "next/navigation"
 
 export default function StoreMappingsLegacyPage() {
-  redirect("/settings?tab=stores");
+  redirect("/settings?tab=stores")
 }

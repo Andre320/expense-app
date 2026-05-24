@@ -1,0 +1,11 @@
+.next
+out
+build
+coverage
+node_modules
+app/generated
+pnpm-lock.yaml
+package-lock.json
+*.db
+*.db-journal
+.next/**
