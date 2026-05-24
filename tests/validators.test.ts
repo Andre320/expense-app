@@ -104,9 +104,11 @@ describe("settingsPatchZ", () => {
     expect(settingsPatchZ.safeParse({}).success).toBe(true);
   });
 
-  it("accepts partial numeric fields", () => {
+  it("accepts partial salary profile fields", () => {
     const r = settingsPatchZ.safeParse({
-      monthlyIncomeBase: 3000,
+      crSalaryGross: 850000,
+      crSalaryCurrency: "CRC",
+      crPayPeriod: "MONTHLY",
       crSolidaristaPct: 1.5,
     });
     expect(r.success).toBe(true);
@@ -120,9 +122,5 @@ describe("settingsPatchZ", () => {
   it("rejects pct out of range", () => {
     expect(settingsPatchZ.safeParse({ crEsppPct: 101 }).success).toBe(false);
     expect(settingsPatchZ.safeParse({ crEsppPct: -1 }).success).toBe(false);
-  });
-
-  it("rejects currency codes wrong length", () => {
-    expect(settingsPatchZ.safeParse({ baseCurrency: "US" }).success).toBe(false);
   });
 });

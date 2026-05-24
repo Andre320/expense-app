@@ -6,6 +6,20 @@ import * as React from "react";
 import { toast } from "sonner";
 import type { UseMutationResult } from "@tanstack/react-query";
 import { Trash2 } from "lucide-react";
+import { InsetPanel } from "@/components/patterns/inset-panel";
+import { PageIntro } from "@/components/patterns/page-intro";
+import { SelectField } from "@/components/select-field";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -27,6 +41,11 @@ type Category = {
   color: string | null;
   position: number;
 };
+
+const KIND_OPTIONS = [
+  { value: "EXPENSE", label: "Expense" },
+  { value: "INCOME", label: "Income" },
+] as const;
 
 async function fetchCategories(): Promise<Category[]> {
   const res = await fetch("/api/categories");
@@ -112,27 +131,31 @@ export function CategoriesManager({ embedded }: { embedded?: boolean }) {
   return (
     <div className="space-y-8">
       {!embedded ? (
-        <header className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <h1 className="text-2xl font-semibold tracking-tight">Categories</h1>
-            <p className="mt-1 max-w-2xl text-sm text-[var(--muted-fg)]">
+        <PageIntro
+          title="Categories"
+          description={
+            <>
               Create and manage income and expense categories. They power the ledger, CSV
               import, and{" "}
               <Link href="/settings?tab=stores" className="underline-offset-2 hover:underline">
                 store mappings
               </Link>
               .
-            </p>
-          </div>
-          <Button variant="outline" size="sm" asChild>
-            <Link href="/transactions">← Ledger</Link>
-          </Button>
-        </header>
+            </>
+          }
+          actions={
+            <Button variant="outline" size="sm" asChild>
+              <Link href="/transactions">← Ledger</Link>
+            </Button>
+          }
+        />
       ) : (
-        <p className="text-sm text-[var(--muted-fg)]">
-          Categories are used by the ledger, imports, and store mappings. Names are unique per
-          type (income vs expense).
-        </p>
+        <InsetPanel>
+          <p className="text-sm text-muted-foreground">
+            Categories are used by the ledger, imports, and store mappings. Names are unique per
+            type (income vs expense).
+          </p>
+        </InsetPanel>
       )}
 
       <Card>
@@ -153,18 +176,14 @@ export function CategoriesManager({ embedded }: { embedded?: boolean }) {
               onChange={(e) => setNewName(e.target.value)}
             />
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="new-kind">Type</Label>
-            <select
-              id="new-kind"
-              className="flex h-9 w-full rounded-lg border border-[var(--border)] bg-[var(--card)] px-3 text-sm sm:w-40"
-              value={newKind}
-              onChange={(e) => setNewKind(e.target.value as "INCOME" | "EXPENSE")}
-            >
-              <option value="EXPENSE">Expense</option>
-              <option value="INCOME">Income</option>
-            </select>
-          </div>
+          <SelectField
+            id="new-kind"
+            label="Type"
+            value={newKind}
+            onValueChange={(v) => setNewKind(v as "INCOME" | "EXPENSE")}
+            options={[...KIND_OPTIONS]}
+            className="sm:w-40"
+          />
           <div className="space-y-2">
             <Label htmlFor="new-color">Color</Label>
             <Input
@@ -186,7 +205,7 @@ export function CategoriesManager({ embedded }: { embedded?: boolean }) {
       </Card>
 
       {isPending ? (
-        <p className="text-sm text-[var(--muted-fg)]">Loading…</p>
+        <p className="text-sm text-muted-foreground">Loading…</p>
       ) : (
         <div className="grid gap-8 lg:grid-cols-2">
           <CategoryTable title="Income" rows={income} patchMut={patchMut} deleteMut={deleteMut} />
@@ -220,7 +239,9 @@ function CategoryTable({
       </CardHeader>
       <CardContent>
         {rows.length === 0 ? (
-          <p className="text-xs text-[var(--muted-fg)]">None yet.</p>
+          <InsetPanel>
+            <p className="text-xs text-muted-foreground">None yet.</p>
+          </InsetPanel>
         ) : (
           <Table>
             <TableHeader>
@@ -301,34 +322,54 @@ function CategoryRow({
         {locked ? (
           <Badge variant="default">Expense</Badge>
         ) : (
-          <select
-            className="h-8 w-full max-w-[120px] rounded-md border border-[var(--border)] bg-[var(--card)] px-2 text-xs"
+          <SelectField
             value={kind}
-            onChange={(e) => {
-              const v = e.target.value as "INCOME" | "EXPENSE";
-              if (v === c.kind) return;
-              setKind(v);
-              patchMut.mutate({ id: c.id, body: { kind: v } });
+            onValueChange={(v) => {
+              const val = v as "INCOME" | "EXPENSE";
+              if (val === c.kind) return;
+              setKind(val);
+              patchMut.mutate({ id: c.id, body: { kind: val } });
             }}
-          >
-            <option value="EXPENSE">Expense</option>
-            <option value="INCOME">Income</option>
-          </select>
+            options={[...KIND_OPTIONS]}
+            size="sm"
+            triggerClassName="max-w-[120px] text-xs"
+          />
         )}
       </TableCell>
       <TableCell className="py-2">
         {!locked && (
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="text-[var(--muted-fg)] hover:text-red-400"
-            aria-label="Delete category"
-            onClick={() => deleteMut.mutate(c.id)}
-            disabled={deleteMut.isPending}
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon"
+                className="text-muted-foreground hover:text-destructive"
+                aria-label="Delete category"
+                disabled={deleteMut.isPending}
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Delete category?</AlertDialogTitle>
+                <AlertDialogDescription>
+                  This will remove &ldquo;{c.name}&rdquo;. Transactions using this category may
+                  need to be recategorized.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  variant="destructive"
+                  onClick={() => deleteMut.mutate(c.id)}
+                >
+                  Delete
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         )}
       </TableCell>
     </TableRow>

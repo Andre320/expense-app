@@ -18,7 +18,7 @@ export async function POST(req: Request) {
   const settings = await prisma.appSettings.findUniqueOrThrow({
     where: { id: "default" },
   });
-  const quotePerBase = numFromDecimal(settings.quotePerBase);
+  const crcPerUsd = numFromDecimal(settings.crCrcPerUsd);
 
   let created = 0;
   const errors: string[] = [];
@@ -51,9 +51,7 @@ export async function POST(req: Request) {
     const dual = computeDualAmounts({
       amountOriginal: row.amountOriginal,
       currencyCode: row.currencyCode,
-      baseCurrency: settings.baseCurrency,
-      quoteCurrency: settings.quoteCurrency,
-      quotePerBase,
+      crcPerUsd,
     });
 
     await prisma.transaction.create({

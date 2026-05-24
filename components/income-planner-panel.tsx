@@ -5,6 +5,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import * as React from "react";
 import { toast } from "sonner";
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
+import { PageIntro } from "@/components/patterns/page-intro";
+import { InsetPanel } from "@/components/patterns/inset-panel";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -14,16 +16,16 @@ import {
   computeCrSalary,
   CR_CCSS_EMPLOYEE_RATE_2026,
   grossMonthlyCrcFromInput,
-  plannedNetCrcToMonthlyIncomeBase,
   type CrPayPeriod,
 } from "@/lib/utils/taxCalculator";
-import { liveNetCrcToExpectedIncomeBase } from "@/lib/forecast-planning";
+import { computeLiveExpectedNetForCurrentMonth } from "@/lib/income-profile";
+import { stringifyBonusMonths } from "@/lib/income-bonus";
+import type { IncomeBonusDto } from "@/components/income-bonuses-manager";
 
 type Settings = {
-  baseCurrency: string;
-  quoteCurrency: string;
-  quotePerBase: number;
-  monthlyIncomeBase: number;
+  crSalaryGross: number;
+  crSalaryCurrency: string;
+  crPayPeriod: string;
   crCrcPerUsd: number;
   crSolidaristaPct: number;
   crPensionComplementariaPct: number;
@@ -55,57 +57,91 @@ const PIE_LEGEND_DOT_CLASS: Record<string, string> = {
 };
 
 type IncomePlannerPanelProps = {
-  /** When set, emits expected net income in **base currency** whenever the calculator changes (gross, period, currency). */
+  /** When set, emits expected net income in CRC whenever the calculator changes (includes bonuses this month). */
   onLiveExpectedIncomeBase?: (amountBase: number) => void;
   compactNav?: boolean;
+  bonuses?: IncomeBonusDto[];
 };
 
 export function IncomePlannerPanel({
   onLiveExpectedIncomeBase,
   compactNav,
+  bonuses = [],
 }: IncomePlannerPanelProps) {
   const qc = useQueryClient();
-  const { data: settings, isPending } = useQuery({
+  const { data: settings, isPending, isError } = useQuery({
     queryKey: ["settings"],
     queryFn: fetchSettings,
   });
 
-  const [grossStr, setGrossStr] = React.useState("850000");
+  const [grossStr, setGrossStr] = React.useState("");
   const [period, setPeriod] = React.useState<CrPayPeriod>("MONTHLY");
   const [inputCurrency, setInputCurrency] = React.useState<"CRC" | "USD">("CRC");
+  const [solidaristaPct, setSolidaristaPct] = React.useState("0");
+  const [pensionPct, setPensionPct] = React.useState("0");
+  const [esppPct, setEsppPct] = React.useState("0");
+  const [profileLoaded, setProfileLoaded] = React.useState(false);
+
+  React.useEffect(() => {
+    if (!settings) return;
+    setGrossStr(settings.crSalaryGross > 0 ? String(settings.crSalaryGross) : "850000");
+    setPeriod(settings.crPayPeriod === "BIWEEKLY" ? "BIWEEKLY" : "MONTHLY");
+    setInputCurrency(settings.crSalaryCurrency === "USD" ? "USD" : "CRC");
+    setSolidaristaPct(String(settings.crSolidaristaPct));
+    setPensionPct(String(settings.crPensionComplementariaPct));
+    setEsppPct(String(settings.crEsppPct));
+    setProfileLoaded(true);
+  }, [settings]);
 
   const grossNum = Number.parseFloat(grossStr.replace(/,/g, "")) || 0;
   const crcUsd = settings?.crCrcPerUsd ?? 505;
 
   const voluntaryPct = React.useMemo(
     () => ({
-      solidaristaPct: settings?.crSolidaristaPct ?? 0,
-      pensionComplementariaPct: settings?.crPensionComplementariaPct ?? 0,
-      esppPct: settings?.crEsppPct ?? 0,
+      solidaristaPct: Number.parseFloat(solidaristaPct) || 0,
+      pensionComplementariaPct: Number.parseFloat(pensionPct) || 0,
+      esppPct: Number.parseFloat(esppPct) || 0,
     }),
-    [settings],
+    [solidaristaPct, pensionPct, esppPct],
   );
 
   const breakdown = React.useMemo(() => {
-    if (!settings) return null;
     return computeCrSalary(grossNum, period, inputCurrency, crcUsd, voluntaryPct);
-  }, [grossNum, period, inputCurrency, crcUsd, voluntaryPct, settings]);
+  }, [grossNum, period, inputCurrency, crcUsd, voluntaryPct]);
+
+  const bonusRows = React.useMemo(
+    () =>
+      bonuses.map((b) => ({
+        name: b.name,
+        grossAmount: b.grossAmount,
+        grossCurrency: b.grossCurrency,
+        months: stringifyBonusMonths(b.months),
+      })),
+    [bonuses],
+  );
 
   React.useEffect(() => {
-    if (!onLiveExpectedIncomeBase || !settings || !breakdown) return;
-    try {
-      const base = liveNetCrcToExpectedIncomeBase({
-        netMonthlyCrc: breakdown.netMonthlyCrc,
-        baseCurrency: settings.baseCurrency,
-        quoteCurrency: settings.quoteCurrency,
-        quotePerBase: settings.quotePerBase,
-        crCrcPerUsd: settings.crCrcPerUsd,
-      });
-      onLiveExpectedIncomeBase(base);
-    } catch {
-      /* keep saved profile as source of truth when CRC→base is not configured */
-    }
-  }, [onLiveExpectedIncomeBase, settings, breakdown]);
+    if (!onLiveExpectedIncomeBase || !settings || grossNum <= 0) return;
+    const net = computeLiveExpectedNetForCurrentMonth(
+      {
+        ...settings,
+        crSolidaristaPct: voluntaryPct.solidaristaPct,
+        crPensionComplementariaPct: voluntaryPct.pensionComplementariaPct,
+        crEsppPct: voluntaryPct.esppPct,
+      },
+      bonusRows,
+      { gross: grossNum, period, currency: inputCurrency },
+    );
+    onLiveExpectedIncomeBase(net);
+  }, [
+    onLiveExpectedIncomeBase,
+    settings,
+    grossNum,
+    period,
+    inputCurrency,
+    voluntaryPct,
+    bonusRows,
+  ]);
 
   const pieData = React.useMemo(() => {
     if (!breakdown) return [];
@@ -131,23 +167,24 @@ export function IncomePlannerPanel({
   const saveMut = useMutation({
     mutationFn: async () => {
       if (!settings || !breakdown) throw new Error("No settings");
-      const baseAmount = plannedNetCrcToMonthlyIncomeBase({
-        netMonthlyCrc: breakdown.netMonthlyCrc,
-        baseCurrency: settings.baseCurrency,
-        quoteCurrency: settings.quoteCurrency,
-        quotePerBase: settings.quotePerBase,
-        crCrcPerUsd: settings.crCrcPerUsd,
-      });
       const res = await fetch("/api/settings", {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ monthlyIncomeBase: baseAmount }),
+        body: JSON.stringify({
+          crSalaryGross: grossNum,
+          crSalaryCurrency: inputCurrency,
+          crPayPeriod: period,
+          crSolidaristaPct: voluntaryPct.solidaristaPct,
+          crPensionComplementariaPct: voluntaryPct.pensionComplementariaPct,
+          crEsppPct: voluntaryPct.esppPct,
+        }),
       });
       if (!res.ok) throw new Error("Save failed");
       return res.json();
     },
     onSuccess: () => {
-      toast.success("Saved planned net as monthly income in Settings");
+      toast.success("Saved salary profile");
+      setProfileLoaded(false);
       qc.invalidateQueries({ queryKey: ["settings"] });
       qc.invalidateQueries({ queryKey: ["analytics", "summary"] });
     },
@@ -168,35 +205,41 @@ export function IncomePlannerPanel({
 
   return (
     <div className="space-y-8">
-      <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Income planner</h1>
-          <p className="mt-1 max-w-2xl text-sm text-[var(--muted-fg)]">
+      <PageIntro
+        title="Salary calculator"
+        description={
+          <>
             Costa Rica salaried estimates: CCSS obrero ({(CR_CCSS_EMPLOYEE_RATE_2026 * 100).toFixed(2)}% in
-            2026), progressive Impuesto al Salario (2026), plus optional % deductions from Settings. For
+            2026), progressive Impuesto al Salario (2026), plus optional payroll % below. For
             planning only — not tax advice.
-          </p>
-        </div>
-        {!compactNav ? (
-          <Button variant="outline" size="sm" asChild>
-            <Link href="/">← Dashboard</Link>
-          </Button>
-        ) : null}
-      </header>
+          </>
+        }
+        actions={
+          !compactNav ? (
+            <Button variant="outline" size="sm" asChild>
+              <Link href="/">← Dashboard</Link>
+            </Button>
+          ) : undefined
+        }
+      />
 
-      {isPending || !settings || !breakdown ? (
-        <p className="text-sm text-[var(--muted-fg)]">Loading…</p>
+      {isPending && !profileLoaded ? (
+        <p className="text-sm text-muted-foreground">Loading saved profile…</p>
+      ) : isError ? (
+        <p className="text-sm text-red-400">
+          Could not load saved profile. Check that the database is migrated and restart the dev
+          server after schema changes.
+        </p>
       ) : (
         <div className="grid gap-6 lg:grid-cols-2">
           <Card>
             <CardHeader>
               <CardTitle>Salary calculator</CardTitle>
               <CardDescription>
-                Gross salary (bruto). Bi-weekly = quincena (×2 to monthly gross). Percent deductions
-                (Solidarista, pensión complementaria, ESPP) and{" "}
-                <strong>CRC per 1 USD</strong> are configured in{" "}
-                <Link href="/settings?tab=cr" className="underline-offset-2 hover:underline">
-                  Settings → Costa Rica
+                Gross salary (bruto). Bi-weekly = quincena (×2 to monthly gross). USD gross uses the
+                exchange rate from{" "}
+                <Link href="/settings?tab=currency" className="underline-offset-2 hover:underline">
+                  Settings → Currency
                 </Link>
                 .
               </CardDescription>
@@ -241,11 +284,56 @@ export function IncomePlannerPanel({
               </div>
 
               {inputCurrency === "USD" && (
-                <p className="text-xs text-[var(--muted-fg)]">
-                  Conversion: <strong>{crcUsd.toLocaleString()} CRC</strong> per 1 USD (Settings → Costa
-                  Rica).
+                <p className="text-xs text-muted-foreground">
+                  Conversion: <strong>{crcUsd.toLocaleString()} CRC</strong> per 1 USD (
+                  <Link href="/settings?tab=currency" className="underline-offset-2 hover:underline">
+                    Settings → Currency
+                  </Link>
+                  ).
                 </p>
               )}
+
+              <InsetPanel className="space-y-3 p-4">
+                <p className="text-sm font-medium">Optional payroll deductions (% of gross)</p>
+                <div className="grid gap-3 sm:grid-cols-3">
+                  <div className="space-y-1.5">
+                    <Label htmlFor="solidaristaPct">Solidarista</Label>
+                    <Input
+                      id="solidaristaPct"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      max="100"
+                      value={solidaristaPct}
+                      onChange={(e) => setSolidaristaPct(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="pensionPct">Pensión compl.</Label>
+                    <Input
+                      id="pensionPct"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      max="100"
+                      value={pensionPct}
+                      onChange={(e) => setPensionPct(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label htmlFor="esppPct">ESPP / otro</Label>
+                    <Input
+                      id="esppPct"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      max="100"
+                      value={esppPct}
+                      onChange={(e) => setEsppPct(e.target.value)}
+                    />
+                  </div>
+                </div>
+              </InsetPanel>
 
               <div className="space-y-2">
                 <Label htmlFor="gross">
@@ -260,7 +348,7 @@ export function IncomePlannerPanel({
                 />
               </div>
 
-              <div className="rounded-lg border border-[var(--border)] bg-[var(--muted)]/30 p-4 text-sm">
+              <InsetPanel className="p-4 text-sm">
                 <div className="grid gap-2 tabular-nums">
                   <Row label="Gross (monthly, CRC)" value={fmtCrc(breakdown.grossMonthlyCrc)} />
                   <Row label="CCSS (monthly)" value={fmtCrc(breakdown.ccssMonthlyCrc)} />
@@ -283,19 +371,18 @@ export function IncomePlannerPanel({
                   <Row label="Net (monthly)" value={fmtCrc(breakdown.netMonthlyCrc)} strong />
                   <Row label="Net (per quincena)" value={fmtCrc(breakdown.netBiweeklyCrc)} />
                 </div>
-              </div>
+              </InsetPanel>
 
               <div className="flex flex-wrap items-center gap-3">
                 <Button
                   type="button"
-                  disabled={saveMut.isPending || breakdown.netMonthlyCrc <= 0}
+                  disabled={saveMut.isPending || grossNum <= 0}
                   onClick={() => saveMut.mutate()}
                 >
                   Save as income profile
                 </Button>
-                <span className="text-xs text-[var(--muted-fg)]">
-                  Writes <strong>planned monthly net</strong> to Settings → Monthly income (
-                  {settings.baseCurrency}) for forecast and dashboard.
+                <span className="text-xs text-muted-foreground">
+                  Saves gross salary, pay period, currency, and optional payroll %.
                 </span>
               </div>
             </CardContent>
@@ -338,7 +425,7 @@ export function IncomePlannerPanel({
                   </PieChart>
                 </ResponsiveContainer>
               </div>
-              <ul className="mt-4 space-y-2 text-xs text-[var(--muted-fg)]">
+              <ul className="mt-4 space-y-2 text-xs text-muted-foreground">
                 {pieData.map((p) => (
                   <li key={p.key} className="flex items-center justify-between gap-2">
                     <span className="flex items-center gap-2">
@@ -347,7 +434,7 @@ export function IncomePlannerPanel({
                       />
                       {p.name}
                     </span>
-                    <span className="tabular-nums text-[var(--foreground)]">{fmtCrc(p.value)}</span>
+                    <span className="tabular-nums text-foreground">{fmtCrc(p.value)}</span>
                   </li>
                 ))}
               </ul>
@@ -356,7 +443,7 @@ export function IncomePlannerPanel({
         </div>
       )}
 
-      <p className="text-[11px] leading-relaxed text-[var(--muted-fg)]">
+      <p className="text-[11px] leading-relaxed text-muted-foreground">
         2026 salary brackets (monthly CRC): exempt up to ₡918,000; then 10% / 15% / 20% / 25% marginal bands
         to ₡4,727,000 and above. Official detail:{" "}
         <a
@@ -387,12 +474,12 @@ function Row({
   return (
     <div>
       <div className="flex justify-between gap-3">
-        <span className={strong ? "font-medium text-[var(--foreground)]" : "text-[var(--muted-fg)]"}>
+        <span className={strong ? "font-medium text-foreground" : "text-muted-foreground"}>
           {label}
         </span>
-        <span className={strong ? "font-semibold text-[var(--foreground)]" : ""}>{value}</span>
+        <span className={strong ? "font-semibold text-foreground" : ""}>{value}</span>
       </div>
-      {hint ? <p className="mt-0.5 text-[11px] text-[var(--muted-fg)]">{hint}</p> : null}
+      {hint ? <p className="mt-0.5 text-[11px] text-muted-foreground">{hint}</p> : null}
     </div>
   );
 }

@@ -15,10 +15,22 @@ import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 import { z } from "zod";
+import { FormSelect } from "@/components/form-select";
+import { PageIntro } from "@/components/patterns/page-intro";
+import { SELECT_NONE } from "@/components/select-field";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { SelectField } from "@/components/select-field";
+import { Skeleton } from "@/components/ui/skeleton";
 import {
   Table,
   TableBody,
@@ -28,6 +40,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { QUOTE_CURRENCY, REPORTING_CURRENCY } from "@/lib/app-currency";
 
 type Category = { id: string; name: string; kind: "INCOME" | "EXPENSE" };
 type Tx = {
@@ -59,15 +72,6 @@ async function fetchCategories(): Promise<Category[]> {
   const res = await fetch("/api/categories");
   if (!res.ok) throw new Error("categories");
   return res.json();
-}
-
-async function fetchSettings() {
-  const res = await fetch("/api/settings");
-  if (!res.ok) throw new Error("settings");
-  return res.json() as Promise<{
-    baseCurrency: string;
-    quoteCurrency: string;
-  }>;
 }
 
 async function fetchTags(): Promise<{ id: string; name: string }[]> {
@@ -113,11 +117,6 @@ export default function TransactionsPage() {
     return p;
   }, [page, sortBy, sortDir, kindFilter, debouncedQ]);
 
-  const { data: settings } = useQuery({
-    queryKey: ["settings"],
-    queryFn: fetchSettings,
-  });
-
   const { data: categories } = useQuery({
     queryKey: ["categories"],
     queryFn: fetchCategories,
@@ -141,16 +140,14 @@ export default function TransactionsPage() {
       description: "",
       categoryId: "",
       amountOriginal: 1,
-      currencyCode: settings?.baseCurrency ?? "USD",
+      currencyCode: REPORTING_CURRENCY,
       tagNames: "",
     },
   });
 
   React.useEffect(() => {
-    if (settings?.baseCurrency) {
-      form.setValue("currencyCode", settings.baseCurrency);
-    }
-  }, [settings?.baseCurrency, form]);
+    form.setValue("currencyCode", REPORTING_CURRENCY);
+  }, [form]);
 
   const watchedKind = useWatch({ control: form.control, name: "kind" }) ?? "EXPENSE";
   const filteredCats = React.useMemo(
@@ -268,14 +265,14 @@ export default function TransactionsPage() {
       },
       {
         accessorKey: "amountBase",
-        header: () => `Base (${settings?.baseCurrency ?? "—"})`,
+        header: () => REPORTING_CURRENCY,
         cell: ({ getValue }) => (
           <span className="tabular-nums">{(getValue() as number).toFixed(2)}</span>
         ),
       },
       {
         accessorKey: "amountQuote",
-        header: () => `Quote (${settings?.quoteCurrency ?? "—"})`,
+        header: () => QUOTE_CURRENCY,
         cell: ({ getValue }) => (
           <span className="tabular-nums">{(getValue() as number).toFixed(2)}</span>
         ),
@@ -288,7 +285,7 @@ export default function TransactionsPage() {
             type="button"
             variant="ghost"
             size="icon"
-            className="text-[var(--muted-fg)] hover:text-red-400"
+            className="text-muted-foreground hover:text-destructive"
             onClick={() => deleteMut.mutate(row.original.id)}
             disabled={deleteMut.isPending}
             aria-label="Delete"
@@ -298,7 +295,7 @@ export default function TransactionsPage() {
         ),
       },
     ],
-    [settings?.baseCurrency, settings?.quoteCurrency, deleteMut],
+    [deleteMut],
   );
 
   const table = useReactTable({
@@ -318,13 +315,10 @@ export default function TransactionsPage() {
 
   return (
     <div className="space-y-8">
-      <header>
-        <h1 className="text-2xl font-semibold tracking-tight">Ledger</h1>
-        <p className="mt-1 max-w-2xl text-sm text-[var(--muted-fg)]">
-          Manual entries with dual-currency snapshots. Sort columns and page through
-          history.
-        </p>
-      </header>
+      <PageIntro
+        title="Ledger"
+        description="Manual entries in CRC with USD equivalent. Sort columns and page through history."
+      />
 
       <Card>
         <CardHeader>
@@ -335,89 +329,113 @@ export default function TransactionsPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <form
-            className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3"
-            onSubmit={form.handleSubmit((v) => createMut.mutate(v))}
-          >
-            <div className="space-y-2">
-              <Label htmlFor="occurredAt">Date & time</Label>
-              <Input id="occurredAt" type="datetime-local" {...form.register("occurredAt")} />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="kind">Kind</Label>
-              <select
-                id="kind"
-                className="flex h-9 w-full rounded-lg border border-[var(--border)] bg-[var(--card)] px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
-                {...form.register("kind")}
-              >
-                <option value="EXPENSE">Expense</option>
-                <option value="INCOME">Income</option>
-              </select>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="categoryId">Category</Label>
-              <select
-                id="categoryId"
-                className="flex h-9 w-full rounded-lg border border-[var(--border)] bg-[var(--card)] px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
-                {...form.register("categoryId")}
-              >
-                <option value="">—</option>
-                {filteredCats.map((c) => (
-                  <option key={c.id} value={c.id}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="space-y-2 sm:col-span-2">
-              <Label htmlFor="description">Description</Label>
-              <Input id="description" {...form.register("description")} />
-            </div>
-            <div className="space-y-2 sm:col-span-2">
-              <Label htmlFor="tagNames">Tags (comma-separated)</Label>
-              <Input
-                id="tagNames"
-                placeholder="e.g. travel, tax-deductible"
-                list="known-tags"
-                {...form.register("tagNames")}
+          <Form {...form}>
+            <form
+              className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3"
+              onSubmit={form.handleSubmit((v) => createMut.mutate(v))}
+            >
+              <FormField
+                control={form.control}
+                name="occurredAt"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Date & time</FormLabel>
+                    <FormControl>
+                      <Input type="datetime-local" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
               />
-              <datalist id="known-tags">
-                {(tags ?? []).map((t) => (
-                  <option key={t.id} value={t.name} />
-                ))}
-              </datalist>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="amountOriginal">Amount</Label>
-              <Input
-                id="amountOriginal"
-                type="number"
-                step="0.01"
-                min="0"
-                {...form.register("amountOriginal", { valueAsNumber: true })}
+              <FormSelect
+                control={form.control}
+                name="kind"
+                label="Kind"
+                options={[
+                  { value: "EXPENSE", label: "Expense" },
+                  { value: "INCOME", label: "Income" },
+                ]}
               />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="currencyCode">Currency</Label>
-              <select
-                id="currencyCode"
-                className="flex h-9 w-full rounded-lg border border-[var(--border)] bg-[var(--card)] px-3 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--ring)]"
-                {...form.register("currencyCode")}
-              >
-                <option value={settings?.baseCurrency ?? "USD"}>
-                  {settings?.baseCurrency ?? "USD"} (base)
-                </option>
-                <option value={settings?.quoteCurrency ?? "EUR"}>
-                  {settings?.quoteCurrency ?? "EUR"} (quote)
-                </option>
-              </select>
-            </div>
-            <div className="flex items-end">
-              <Button type="submit" disabled={createMut.isPending}>
-                Save entry
-              </Button>
-            </div>
-          </form>
+              <FormSelect
+                control={form.control}
+                name="categoryId"
+                label="Category"
+                placeholder="—"
+                options={[
+                  { value: "", label: "—" },
+                  ...filteredCats.map((c) => ({ value: c.id, label: c.name })),
+                ]}
+              />
+              <FormField
+                control={form.control}
+                name="description"
+                render={({ field }) => (
+                  <FormItem className="sm:col-span-2">
+                    <FormLabel>Description</FormLabel>
+                    <FormControl>
+                      <Input {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="tagNames"
+                render={({ field }) => (
+                  <FormItem className="sm:col-span-2">
+                    <FormLabel>Tags (comma-separated)</FormLabel>
+                    <FormControl>
+                      <Input
+                        placeholder="e.g. travel, tax-deductible"
+                        list="known-tags"
+                        {...field}
+                      />
+                    </FormControl>
+                    <datalist id="known-tags">
+                      {(tags ?? []).map((t) => (
+                        <option key={t.id} value={t.name} />
+                      ))}
+                    </datalist>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="amountOriginal"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Amount</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        {...field}
+                        onChange={(e) => field.onChange(e.target.valueAsNumber)}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormSelect
+                control={form.control}
+                name="currencyCode"
+                label="Currency"
+                options={[
+                  { value: REPORTING_CURRENCY, label: REPORTING_CURRENCY },
+                  { value: QUOTE_CURRENCY, label: QUOTE_CURRENCY },
+                ]}
+              />
+              <div className="flex items-end">
+                <Button type="submit" disabled={createMut.isPending}>
+                  Save entry
+                </Button>
+              </div>
+            </form>
+          </Form>
         </CardContent>
       </Card>
 
@@ -436,20 +454,26 @@ export default function TransactionsPage() {
               onChange={(e) => setQ(e.target.value)}
               className="w-44"
             />
-            <select
-              className="h-9 rounded-lg border border-[var(--border)] bg-[var(--card)] px-2 text-xs"
+            <SelectField
               value={kindFilter}
-              onChange={(e) => setKindFilter(e.target.value)}
-            >
-              <option value="">All kinds</option>
-              <option value="INCOME">Income</option>
-              <option value="EXPENSE">Expense</option>
-            </select>
+              onValueChange={(v) => setKindFilter(v === SELECT_NONE ? "" : v)}
+              triggerClassName="w-32"
+              size="sm"
+              options={[
+                { value: "", label: "All kinds" },
+                { value: "INCOME", label: "Income" },
+                { value: "EXPENSE", label: "Expense" },
+              ]}
+            />
           </div>
         </CardHeader>
         <CardContent>
           {isPending ? (
-            <p className="text-sm text-[var(--muted-fg)]">Loading…</p>
+            <div className="space-y-2">
+              <Skeleton className="h-8 w-full" />
+              <Skeleton className="h-8 w-full" />
+              <Skeleton className="h-8 w-full" />
+            </div>
           ) : (
             <>
               <Table>
@@ -461,7 +485,7 @@ export default function TransactionsPage() {
                           key={header.id}
                           className={
                             header.column.getCanSort()
-                              ? "cursor-pointer select-none hover:text-[var(--foreground)]"
+                              ? "cursor-pointer select-none hover:text-foreground"
                               : undefined
                           }
                           onClick={header.column.getToggleSortingHandler()}
@@ -491,7 +515,7 @@ export default function TransactionsPage() {
                   ))}
                 </TableBody>
               </Table>
-              <div className="mt-4 flex items-center justify-between text-xs text-[var(--muted-fg)]">
+              <div className="mt-4 flex items-center justify-between text-xs text-muted-foreground">
                 <span>
                   Page {data?.page ?? 1} of{" "}
                   {data ? Math.max(1, Math.ceil(data.total / data.pageSize)) : 1}

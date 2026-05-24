@@ -30,7 +30,7 @@ export async function PATCH(req: Request, ctx: Ctx) {
   const settings = await prisma.appSettings.findUniqueOrThrow({
     where: { id: "default" },
   });
-  const quotePerBase = numFromDecimal(settings.quotePerBase);
+  const crcPerUsd = numFromDecimal(settings.crCrcPerUsd);
 
   const amountOriginal =
     parsed.data.amountOriginal ?? numFromDecimal(existing.amountOriginal);
@@ -41,9 +41,7 @@ export async function PATCH(req: Request, ctx: Ctx) {
   const dual = computeDualAmounts({
     amountOriginal,
     currencyCode,
-    baseCurrency: settings.baseCurrency,
-    quoteCurrency: settings.quoteCurrency,
-    quotePerBase,
+    crcPerUsd,
   });
 
   const occurredAt = parsed.data.occurredAt

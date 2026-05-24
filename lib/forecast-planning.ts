@@ -1,4 +1,4 @@
-import { roundMoney } from "./currency";
+import { roundMoney, amountToReportingBase } from "./currency";
 import { plannedNetCrcToMonthlyIncomeBase } from "./utils/taxCalculator";
 
 export type SavingsGoalForecastInput = {
@@ -7,6 +7,7 @@ export type SavingsGoalForecastInput = {
   targetAmount: number | null;
   currentAmount: number;
   priorityOrder: number;
+  currency?: string;
 };
 
 export type GoalMilestone = {
@@ -22,7 +23,7 @@ export type GoalMilestone = {
 };
 
 /**
- * Monthly surplus for savings forecasting: expected net income (settings / planner)
+ * Monthly surplus for savings forecasting: expected net income (salary profile)
  * minus trailing average monthly expenses from the ledger.
  */
 export function monthlySurplusForForecast(
@@ -30,6 +31,24 @@ export function monthlySurplusForForecast(
   avgMonthlyExpensesFromLedger: number,
 ): number {
   return roundMoney(expectedNetIncomeBase - avgMonthlyExpensesFromLedger);
+}
+
+/** Normalize goal amounts to CRC for surplus-based forecast math. */
+export function goalsForForecast(
+  goals: SavingsGoalForecastInput[],
+  crcPerUsd: number,
+): SavingsGoalForecastInput[] {
+  return goals.map((g) => {
+    const cur = g.currency ?? "CRC";
+    return {
+      ...g,
+      currentAmount: amountToReportingBase(g.currentAmount, cur, crcPerUsd),
+      targetAmount:
+        g.targetAmount == null
+          ? null
+          : amountToReportingBase(g.targetAmount, cur, crcPerUsd),
+    };
+  });
 }
 
 /**
@@ -86,19 +105,11 @@ export function savingsGoalMilestones(
   return out;
 }
 
-/** Convert live CRC net from planner into expected income in base (same rules as save profile). */
+/** Live CRC net from the Income calculator (reporting currency is CRC). */
 export function liveNetCrcToExpectedIncomeBase(params: {
   netMonthlyCrc: number;
-  baseCurrency: string;
-  quoteCurrency: string;
-  quotePerBase: number;
-  crCrcPerUsd: number;
 }): number {
   return plannedNetCrcToMonthlyIncomeBase({
     netMonthlyCrc: params.netMonthlyCrc,
-    baseCurrency: params.baseCurrency,
-    quoteCurrency: params.quoteCurrency,
-    quotePerBase: params.quotePerBase,
-    crCrcPerUsd: params.crCrcPerUsd,
   });
 }

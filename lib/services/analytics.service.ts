@@ -2,25 +2,40 @@ import "server-only";
 
 import { subMonths, startOfMonth, format } from "date-fns";
 import type { PrismaClient } from "@/app/generated/prisma/client";
+import { REPORTING_CURRENCY } from "@/lib/app-currency";
+import { roundMoney, amountToReportingBase } from "@/lib/currency";
+import { computeExpectedNetForCurrentMonth } from "@/lib/income-profile";
 import { numFromDecimal } from "@/lib/utils";
+
+export type ActiveBonusSummary = {
+  name: string;
+  grossAmountCrc: number;
+};
 
 export type AnalyticsSummaryPayload = {
   monthly: { month: string; income: number; expense: number }[];
   burnRate3Mo: number;
   savingsTotal: number;
+  savingsAccountsTotal: number;
+  expectedMonthlyIncomeBase: number;
+  ledgerNetBalance: number;
+  hasSalaryProfile: boolean;
+  reportingCurrency: typeof REPORTING_CURRENCY;
+  forecastCalendarMonth: number;
+  bonusGrossThisMonth: number;
+  activeBonusesThisMonth: ActiveBonusSummary[];
   settings: {
-    baseCurrency: string;
-    quoteCurrency: string;
-    quotePerBase: number;
-    currentBalanceBase: number;
-    monthlyIncomeBase: number;
-    monthlyDeductionsBase: number;
+    crCrcPerUsd: number;
   };
 };
 
 export async function getAnalyticsSummary(prisma: PrismaClient): Promise<AnalyticsSummaryPayload> {
   const settings = await prisma.appSettings.findUniqueOrThrow({
     where: { id: "default" },
+  });
+
+  const bonuses = await prisma.incomeBonus.findMany({
+    orderBy: [{ position: "asc" }, { name: "asc" }],
   });
 
   const since = startOfMonth(subMonths(new Date(), 11));
@@ -62,21 +77,55 @@ export async function getAnalyticsSummary(prisma: PrismaClient): Promise<Analyti
     last3.length > 0 ? last3.reduce((s, m) => s + m.expense, 0) / last3.length : 0;
 
   const goals = await prisma.savingsGoal.findMany({
-    select: { currentAmount: true },
+    select: { currentAmount: true, currency: true },
   });
-  const savingsTotal = goals.reduce((s, g) => s + numFromDecimal(g.currentAmount), 0);
+  const crcPerUsd = numFromDecimal(settings.crCrcPerUsd);
+  const savingsTotal = roundMoney(
+    goals.reduce(
+      (s, g) =>
+        s + amountToReportingBase(numFromDecimal(g.currentAmount), g.currency, crcPerUsd),
+      0,
+    ),
+  );
+
+  const accounts = await prisma.savingsAccount.findMany({
+    select: { balance: true, currency: true },
+  });
+  const savingsAccountsTotal = roundMoney(
+    accounts.reduce(
+      (s, a) =>
+        s + amountToReportingBase(numFromDecimal(a.balance), a.currency, crcPerUsd),
+      0,
+    ),
+  );
+
+  const allTxs = await prisma.transaction.findMany({
+    select: { kind: true, amountBase: true },
+  });
+  let ledgerNetBalance = 0;
+  for (const t of allTxs) {
+    const amt = numFromDecimal(t.amountBase);
+    if (t.kind === "INCOME") ledgerNetBalance += amt;
+    else ledgerNetBalance -= amt;
+  }
+
+  const gross = numFromDecimal(settings.crSalaryGross);
+  const incomeForecast = computeExpectedNetForCurrentMonth(settings, bonuses);
 
   return {
     monthly,
     burnRate3Mo: Math.round(burnRate * 100) / 100,
     savingsTotal,
+    savingsAccountsTotal,
+    expectedMonthlyIncomeBase: incomeForecast.expectedNetCrc,
+    ledgerNetBalance: roundMoney(ledgerNetBalance),
+    hasSalaryProfile: gross > 0,
+    reportingCurrency: REPORTING_CURRENCY,
+    forecastCalendarMonth: incomeForecast.calendarMonth,
+    bonusGrossThisMonth: incomeForecast.bonusGrossCrc,
+    activeBonusesThisMonth: incomeForecast.activeBonuses,
     settings: {
-      baseCurrency: settings.baseCurrency,
-      quoteCurrency: settings.quoteCurrency,
-      quotePerBase: numFromDecimal(settings.quotePerBase),
-      currentBalanceBase: numFromDecimal(settings.currentBalanceBase),
-      monthlyIncomeBase: numFromDecimal(settings.monthlyIncomeBase),
-      monthlyDeductionsBase: numFromDecimal(settings.monthlyDeductionsBase),
+      crCrcPerUsd: numFromDecimal(settings.crCrcPerUsd),
     },
   };
 }

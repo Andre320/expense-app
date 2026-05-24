@@ -18,15 +18,33 @@ export async function createSavingsGoal(prisma: PrismaClient, d: SavingsCreate) 
   const maxPos = await prisma.savingsGoal.aggregate({ _max: { priorityOrder: true } });
   const nextDefault = (maxPos._max.priorityOrder ?? 0) + 1;
   const priorityOrder = d.priorityOrder ?? nextDefault;
-  const created = await prisma.savingsGoal.create({
-    data: {
-      name: d.name,
-      targetAmount: d.targetAmount == null ? null : String(d.targetAmount),
-      currentAmount: String(d.currentAmount ?? 0),
-      color: d.color,
-      notes: d.notes,
-      priorityOrder,
-    },
+  const opening = d.currentAmount ?? 0;
+  const currency = d.currency ?? "CRC";
+
+  return prisma.$transaction(async (tx) => {
+    const created = await tx.savingsGoal.create({
+      data: {
+        name: d.name,
+        currency,
+        targetAmount: d.targetAmount == null ? null : String(d.targetAmount),
+        currentAmount: String(opening),
+        color: d.color,
+        notes: d.notes,
+        priorityOrder,
+      },
+    });
+
+    if (opening > 0) {
+      await tx.savingsGoalMovement.create({
+        data: {
+          goalId: created.id,
+          kind: "INITIAL",
+          amount: String(opening),
+          description: "Already saved",
+        },
+      });
+    }
+
+    return serializeSavings(created);
   });
-  return serializeSavings(created);
 }

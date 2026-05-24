@@ -14,20 +14,25 @@ enum TransactionKind {
   EXPENSE
 }
 
+enum SavingsMovementKind {
+  DEPOSIT
+  WITHDRAWAL
+  ADJUSTMENT
+  INITIAL
+}
+
+enum RsuVestStatus {
+  PENDING
+  RECEIVED
+}
+
 model AppSettings {
   id String @id @default("default")
 
-  baseCurrency  String  @default("USD")
-  quoteCurrency String  @default("EUR")
-  /// How many quote-currency units equal 1 base unit (e.g. 1 USD = 18.5 MXN)
-  quotePerBase Decimal @default(1)
-
-  /// Starting point for forecast (stored in base currency)
-  currentBalanceBase Decimal @default(0)
-
-  /// Rolling monthly figures for forecast (base currency)
-  monthlyIncomeBase     Decimal @default(0)
-  monthlyDeductionsBase Decimal @default(0)
+  /// Saved salary profile for Income tab (gross input amount in crSalaryCurrency)
+  crSalaryGross    Decimal @default(0)
+  crSalaryCurrency String  @default("CRC")
+  crPayPeriod      String  @default("MONTHLY")
 
   /// CRC per 1 USD — used by Income planner (gross in USD) and saving net to USD base.
   crCrcPerUsd Decimal @default(505)
@@ -39,6 +44,19 @@ model AppSettings {
   crEsppPct Decimal @default(0)
 
   updatedAt DateTime @updatedAt
+}
+
+/// Fixed gross bonus that repeats in selected calendar months every year.
+model IncomeBonus {
+  id            String   @id @default(cuid())
+  name          String
+  grossAmount   Decimal
+  grossCurrency String   @default("CRC")
+  /// JSON array of month numbers 1–12, e.g. "[3,12]"
+  months        String
+  position      Int      @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 }
 
 model Category {
@@ -111,11 +129,94 @@ model TransactionTag {
 model SavingsGoal {
   id             String   @id @default(cuid())
   name           String
+  /// CRC or USD — amounts below are stored in this currency.
+  currency       String   @default("CRC")
   targetAmount   Decimal? @map("targetBase")
   currentAmount  Decimal  @default(0) @map("balanceBase")
   color          String?  @default("#22c55e")
   notes          String?
   priorityOrder  Int      @default(0) @map("position")
+  movements      SavingsGoalMovement[]
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
+}
+
+model SavingsGoalMovement {
+  id          String              @id @default(cuid())
+  goalId      String
+  goal        SavingsGoal         @relation(fields: [goalId], references: [id], onDelete: Cascade)
+  kind        SavingsMovementKind
+  amount      Decimal
+  description String              @default("")
+  occurredAt  DateTime            @default(now())
+  createdAt   DateTime            @default(now())
+
+  @@index([goalId])
+  @@index([occurredAt])
+}
+
+/// Real savings account (bank, wallet) — balance in `currency`.
+model SavingsAccount {
+  id        String                   @id @default(cuid())
+  name      String
+  /// CRC or USD — balance is stored in this currency.
+  currency  String                   @default("CRC")
+  balance   Decimal                  @default(0)
+  notes     String?
+  position  Int                      @default(0)
+  movements SavingsAccountMovement[]
+  createdAt DateTime                 @default(now())
+  updatedAt DateTime                 @updatedAt
+}
+
+model SavingsAccountMovement {
+  id          String              @id @default(cuid())
+  accountId   String
+  account     SavingsAccount      @relation(fields: [accountId], references: [id], onDelete: Cascade)
+  kind        SavingsMovementKind
+  amount      Decimal
+  description String              @default("")
+  occurredAt  DateTime            @default(now())
+  createdAt   DateTime            @default(now())
+
+  @@index([accountId])
+  @@index([occurredAt])
+}
+
+/// RSU grant plan — fixed share count vested on a recurring schedule.
+model RsuPlan {
+  id                   String    @id @default(cuid())
+  name                 String
+  ticker               String
+  totalShares          Decimal
+  grantDate            DateTime
+  vestingPeriodMonths  Int       @default(48)
+  vestIntervalMonths   Int       @default(3)
+  vestDayOfMonth       Int       @default(20)
+  taxWithholdPct       Decimal   @default(20)
+  notes                String?
+  position             Int       @default(0)
+  vests                RsuVest[]
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+}
+
+model RsuVest {
+  id              String        @id @default(cuid())
+  planId          String
+  plan            RsuPlan       @relation(fields: [planId], references: [id], onDelete: Cascade)
+  sequence        Int
+  scheduledDate   DateTime
+  shares          Decimal
+  status          RsuVestStatus @default(PENDING)
+  receivedAt      DateTime?
+  sharesWithheld  Decimal?
+  netShares       Decimal?
+  cashBonusUsd    Decimal?
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@unique([planId, sequence])
+  @@index([planId])
+  @@index([scheduledDate])
 }

@@ -21,18 +21,9 @@ export async function patchSerializedSettings(
   const updated = await prisma.appSettings.update({
     where: { id: "default" },
     data: {
-      ...(d.baseCurrency != null && { baseCurrency: d.baseCurrency.toUpperCase() }),
-      ...(d.quoteCurrency != null && { quoteCurrency: d.quoteCurrency.toUpperCase() }),
-      ...(d.quotePerBase != null && { quotePerBase: String(d.quotePerBase) }),
-      ...(d.currentBalanceBase != null && {
-        currentBalanceBase: String(d.currentBalanceBase),
-      }),
-      ...(d.monthlyIncomeBase != null && {
-        monthlyIncomeBase: String(d.monthlyIncomeBase),
-      }),
-      ...(d.monthlyDeductionsBase != null && {
-        monthlyDeductionsBase: String(d.monthlyDeductionsBase),
-      }),
+      ...(d.crSalaryGross != null && { crSalaryGross: String(d.crSalaryGross) }),
+      ...(d.crSalaryCurrency != null && { crSalaryCurrency: d.crSalaryCurrency }),
+      ...(d.crPayPeriod != null && { crPayPeriod: d.crPayPeriod }),
       ...(d.crCrcPerUsd != null && { crCrcPerUsd: String(d.crCrcPerUsd) }),
       ...(d.crSolidaristaPct != null && {
         crSolidaristaPct: String(d.crSolidaristaPct),

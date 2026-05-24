@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { ensureAppDefaults, prisma } from "@/lib/db";
 import { serializeSavings } from "@/lib/serialize";
+import { applySavingsGoalMovement } from "@/lib/services/savings-movement.service";
+import { numFromDecimal } from "@/lib/utils";
 import { savingsUpdateZ } from "@/lib/validators";
 
 type Ctx = { params: Promise<{ id: string }> };
@@ -18,6 +20,18 @@ export async function PATCH(req: Request, ctx: Ctx) {
   }
   const d = parsed.data;
   try {
+    if (d.currentAmount != null) {
+      const goal = await prisma.savingsGoal.findUniqueOrThrow({ where: { id } });
+      const current = numFromDecimal(goal.currentAmount);
+      if (d.currentAmount !== current) {
+        await applySavingsGoalMovement(prisma, id, {
+          kind: "ADJUSTMENT",
+          amount: d.currentAmount,
+          description: "Balance correction",
+        });
+      }
+    }
+
     const updated = await prisma.savingsGoal.update({
       where: { id },
       data: {
@@ -25,7 +39,6 @@ export async function PATCH(req: Request, ctx: Ctx) {
         ...(d.targetAmount !== undefined && {
           targetAmount: d.targetAmount == null ? null : String(d.targetAmount),
         }),
-        ...(d.currentAmount != null && { currentAmount: String(d.currentAmount) }),
         ...(d.priorityOrder !== undefined && { priorityOrder: d.priorityOrder }),
         ...(d.color !== undefined && { color: d.color }),
         ...(d.notes !== undefined && { notes: d.notes }),

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  goalsForForecast,
   liveNetCrcToExpectedIncomeBase,
   monthlySurplusForForecast,
   savingsGoalMilestones,
@@ -13,6 +14,26 @@ describe("monthlySurplusForForecast", () => {
 
   it("allows negative surplus", () => {
     expect(monthlySurplusForForecast(100, 500)).toBe(-400);
+  });
+});
+
+describe("goalsForForecast", () => {
+  it("converts USD goal amounts to CRC for forecast", () => {
+    const normalized = goalsForForecast(
+      [
+        {
+          id: "usd",
+          name: "USD goal",
+          currency: "USD",
+          targetAmount: 1000,
+          currentAmount: 200,
+          priorityOrder: 1,
+        },
+      ],
+      500,
+    );
+    expect(normalized[0]!.currentAmount).toBe(100_000);
+    expect(normalized[0]!.targetAmount).toBe(500_000);
   });
 });
 
@@ -83,27 +104,9 @@ describe("savingsGoalMilestones", () => {
 });
 
 describe("liveNetCrcToExpectedIncomeBase", () => {
-  it("returns CRC net when base is CRC", () => {
+  it("returns CRC net as reporting amount", () => {
     expect(
-      liveNetCrcToExpectedIncomeBase({
-        netMonthlyCrc: 500_000,
-        baseCurrency: "CRC",
-        quoteCurrency: "USD",
-        quotePerBase: 500,
-        crCrcPerUsd: 505,
-      }),
+      liveNetCrcToExpectedIncomeBase({ netMonthlyCrc: 500_000 }),
     ).toBe(500_000);
-  });
-
-  it("converts via quote when quote is CRC", () => {
-    expect(
-      liveNetCrcToExpectedIncomeBase({
-        netMonthlyCrc: 1_000_000,
-        baseCurrency: "USD",
-        quoteCurrency: "CRC",
-        quotePerBase: 500,
-        crCrcPerUsd: 505,
-      }),
-    ).toBe(2000);
   });
 });

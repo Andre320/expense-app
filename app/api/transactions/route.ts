@@ -77,13 +77,11 @@ export async function POST(req: Request) {
   const settings = await prisma.appSettings.findUniqueOrThrow({
     where: { id: "default" },
   });
-  const quotePerBase = numFromDecimal(settings.quotePerBase);
+  const crcPerUsd = numFromDecimal(settings.crCrcPerUsd);
   const dual = computeDualAmounts({
     amountOriginal: parsed.data.amountOriginal,
     currencyCode: parsed.data.currencyCode,
-    baseCurrency: settings.baseCurrency,
-    quoteCurrency: settings.quoteCurrency,
-    quotePerBase,
+    crcPerUsd,
   });
 
   const occurredAt = new Date(parsed.data.occurredAt);
