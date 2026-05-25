@@ -36,40 +36,33 @@ export type StockQuoteResult = {
 export function priceFromAlpacaSnapshot(
   data: AlpacaSnapshot,
 ): { priceUsd: number; asOf: string } | null {
-  const tradePrice = data.latestTrade?.p
-  if (tradePrice != null && tradePrice > 0) {
-    return {
-      priceUsd: tradePrice,
-      asOf: data.latestTrade?.t ?? new Date().toISOString(),
-    }
-  }
+  return (
+    quoteFromPrice(data.latestTrade?.p, data.latestTrade?.t) ??
+    quoteFromPrice(data.dailyBar?.c, data.dailyBar?.t) ??
+    quoteFromPrice(data.prevDailyBar?.c, data.prevDailyBar?.t) ??
+    quoteFromBidAsk(data.latestQuote) ??
+    null
+  )
+}
 
-  const dailyClose = data.dailyBar?.c
-  if (dailyClose != null && dailyClose > 0) {
-    return {
-      priceUsd: dailyClose,
-      asOf: data.dailyBar?.t ?? new Date().toISOString(),
-    }
-  }
+function quoteFromPrice(
+  price: number | undefined,
+  asOf: string | undefined,
+): { priceUsd: number; asOf: string } | null {
+  if (price == null || price <= 0) return null
+  return { priceUsd: price, asOf: asOf ?? new Date().toISOString() }
+}
 
-  const prevClose = data.prevDailyBar?.c
-  if (prevClose != null && prevClose > 0) {
-    return {
-      priceUsd: prevClose,
-      asOf: data.prevDailyBar?.t ?? new Date().toISOString(),
-    }
+function quoteFromBidAsk(
+  quote: AlpacaSnapshot["latestQuote"],
+): { priceUsd: number; asOf: string } | null {
+  const bid = quote?.bp
+  const ask = quote?.ap
+  if (bid == null || ask == null || bid <= 0 || ask <= 0) return null
+  return {
+    priceUsd: (bid + ask) / 2,
+    asOf: quote?.t ?? new Date().toISOString(),
   }
-
-  const bid = data.latestQuote?.bp
-  const ask = data.latestQuote?.ap
-  if (bid != null && ask != null && bid > 0 && ask > 0) {
-    return {
-      priceUsd: (bid + ask) / 2,
-      asOf: data.latestQuote?.t ?? new Date().toISOString(),
-    }
-  }
-
-  return null
 }
 
 export async function getStockQuote(ticker: string): Promise<StockQuoteResult> {

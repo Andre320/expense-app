@@ -68,6 +68,6 @@ export async function GET() {
 
 ## ESLint
 
-- `max-lines`: warn at 250
+- `max-lines`: warn at 250 (CI treats warnings as failures via `--max-warnings 0`)
 - `complexity`: warn at 15
 - `@typescript-eslint/consistent-type-imports`: error
