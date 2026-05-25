@@ -1,14 +1,18 @@
 import { NextResponse } from "next/server"
-import { computeDualAmounts } from "@/lib/currency"
-import { ensureAppDefaults, prisma } from "@/lib/db"
-import { serializeTransaction } from "@/lib/serialize"
-import { numFromDecimal } from "@/lib/utils"
-import { transactionUpdateZ } from "@/lib/validators"
+import { apiRequireUser, notFoundResponse } from "@/lib/auth/api-context"
+import { prisma } from "@/lib/db/client"
+import { transactionUpdateZ } from "@/lib/shared/validators"
+import {
+  deleteTransaction,
+  updateTransaction,
+} from "@/lib/transactions/services/transaction.service"
 
 type Ctx = { params: Promise<{ id: string }> }
 
 export async function PATCH(req: Request, ctx: Ctx) {
-  await ensureAppDefaults()
+  const auth = await apiRequireUser()
+  if (auth.response) return auth.response
+
   const { id } = await ctx.params
   const json = await req.json().catch(() => null)
   const parsed = transactionUpdateZ.safeParse(json)
@@ -16,78 +20,25 @@ export async function PATCH(req: Request, ctx: Ctx) {
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })
   }
 
-  const existing = await prisma.transaction.findUnique({
-    where: { id },
-    include: { tags: true },
-  })
-  if (!existing) {
-    return NextResponse.json({ error: "Not found" }, { status: 404 })
+  try {
+    const updated = await updateTransaction(prisma, auth.userId, id, parsed.data)
+    return NextResponse.json(updated)
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : "Update failed"
+    if (msg === "Not found") return notFoundResponse()
+    return NextResponse.json({ error: msg }, { status: 400 })
   }
-
-  const settings = await prisma.appSettings.findUniqueOrThrow({
-    where: { id: "default" },
-  })
-  const crcPerUsd = numFromDecimal(settings.crCrcPerUsd)
-
-  const amountOriginal = parsed.data.amountOriginal ?? numFromDecimal(existing.amountOriginal)
-  const currencyCode = (parsed.data.currencyCode ?? existing.currencyCode).toUpperCase()
-
-  const dual = computeDualAmounts({
-    amountOriginal,
-    currencyCode,
-    crcPerUsd,
-  })
-
-  const occurredAt = parsed.data.occurredAt ? new Date(parsed.data.occurredAt) : existing.occurredAt
-  if (Number.isNaN(occurredAt.getTime())) {
-    return NextResponse.json({ error: "Invalid occurredAt" }, { status: 400 })
-  }
-
-  const tagIds = parsed.data.tagIds
-
-  const updated = await prisma.$transaction(async (tx) => {
-    if (tagIds) {
-      await tx.transactionTag.deleteMany({ where: { transactionId: id } })
-    }
-    return tx.transaction.update({
-      where: { id },
-      data: {
-        ...(parsed.data.kind != null && { kind: parsed.data.kind }),
-        ...(parsed.data.description != null && {
-          description: parsed.data.description,
-        }),
-        ...(parsed.data.categoryId !== undefined && {
-          categoryId: parsed.data.categoryId,
-        }),
-        occurredAt,
-        amountOriginal: String(amountOriginal),
-        currencyCode,
-        rateToBase: String(dual.rateToBase),
-        amountBase: String(dual.amountBase),
-        rateToQuote: String(dual.rateToQuote),
-        amountQuote: String(dual.amountQuote),
-        ...(tagIds != null && {
-          tags: {
-            create: tagIds.map((tagId) => ({
-              tag: { connect: { id: tagId } },
-            })),
-          },
-        }),
-      },
-      include: { category: true, tags: { include: { tag: true } } },
-    })
-  })
-
-  return NextResponse.json(serializeTransaction(updated))
 }
 
 export async function DELETE(_req: Request, ctx: Ctx) {
-  await ensureAppDefaults()
+  const auth = await apiRequireUser()
+  if (auth.response) return auth.response
+
   const { id } = await ctx.params
   try {
-    await prisma.transaction.delete({ where: { id } })
+    await deleteTransaction(prisma, auth.userId, id)
   } catch {
-    return NextResponse.json({ error: "Not found" }, { status: 404 })
+    return notFoundResponse()
   }
   return new NextResponse(null, { status: 204 })
 }

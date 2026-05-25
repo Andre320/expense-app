@@ -15,7 +15,7 @@ import {
 import { ForecastMilestones } from "@/components/forecast-milestones"
 import { MetricStat } from "@/components/patterns/metric-stat"
 import { PageIntro } from "@/components/patterns/page-intro"
-import { RecentLedger } from "@/components/recent-ledger"
+import { RecentLedger } from "@/components/features/transactions/recent-ledger"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -24,11 +24,11 @@ import {
   monthlySurplusForForecast,
   savingsGoalMilestones,
   type SavingsGoalForecastInput,
-} from "@/lib/forecast-planning"
-import { rechartsTooltipContentStyle } from "@/lib/chart-style"
-import { REPORTING_CURRENCY } from "@/lib/app-currency"
-import { formatMoneyBase } from "@/lib/format-money"
-import { MONTH_LABELS } from "@/components/income-bonuses-manager"
+} from "@/lib/planning/forecast-planning"
+import { rechartsTooltipContentStyle } from "@/lib/stocks/chart-style"
+import { REPORTING_CURRENCY } from "@/lib/shared/app-currency"
+import { formatMoneyBase } from "@/lib/shared/format-money"
+import { MONTH_LABELS } from "@/components/features/income/income-bonuses-manager"
 
 type Summary = {
   monthly: { month: string; income: number; expense: number }[]

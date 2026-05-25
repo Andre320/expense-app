@@ -1,8 +1,8 @@
 "use client"
 
 import { ProgressBar } from "@/components/patterns/progress-bar"
-import { formatMoneyBase } from "@/lib/format-money"
-import type { GoalMilestone } from "@/lib/forecast-planning"
+import { formatMoneyBase } from "@/lib/shared/format-money"
+import type { GoalMilestone } from "@/lib/planning/forecast-planning"
 
 type Props = {
   milestones: GoalMilestone[]

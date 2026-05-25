@@ -1,13 +1,15 @@
 import { NextResponse } from "next/server"
-import { ensureAppDefaults, prisma } from "@/lib/db"
-import { categoryUpdateZ } from "@/lib/validators"
+import { apiRequireUser, notFoundResponse } from "@/lib/auth/api-context"
+import { deleteCategory, updateCategory } from "@/lib/categories/services/category.service"
+import { prisma } from "@/lib/db/client"
+import { categoryUpdateZ } from "@/lib/shared/validators"
 
 type Ctx = { params: Promise<{ id: string }> }
 
-const UNCATEGORIZED = { name: "Uncategorized", kind: "EXPENSE" as const }
-
 export async function PATCH(req: Request, ctx: Ctx) {
-  await ensureAppDefaults()
+  const auth = await apiRequireUser()
+  if (auth.response) return auth.response
+
   const { id } = await ctx.params
   const json = await req.json().catch(() => null)
   const parsed = categoryUpdateZ.safeParse(json)
@@ -15,42 +17,15 @@ export async function PATCH(req: Request, ctx: Ctx) {
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })
   }
 
-  const existing = await prisma.category.findUnique({ where: { id } })
-  if (!existing) {
-    return NextResponse.json({ error: "Not found" }, { status: 404 })
-  }
-
-  if (
-    existing.name === UNCATEGORIZED.name &&
-    existing.kind === UNCATEGORIZED.kind &&
-    (parsed.data.name != null || parsed.data.kind != null)
-  ) {
-    return NextResponse.json(
-      { error: "The Uncategorized category cannot be renamed or retyped" },
-      { status: 400 },
-    )
-  }
-
-  const name = parsed.data.name != null ? parsed.data.name.trim() : undefined
-  const kind = parsed.data.kind
-
   try {
-    const updated = await prisma.category.update({
-      where: { id },
-      data: {
-        ...(name != null && { name }),
-        ...(kind != null && { kind }),
-        ...(parsed.data.color !== undefined && { color: parsed.data.color }),
-      },
-    })
-    return NextResponse.json({
-      id: updated.id,
-      name: updated.name,
-      kind: updated.kind,
-      color: updated.color,
-      position: updated.position,
-    })
-  } catch {
+    const updated = await updateCategory(prisma, auth.userId, id, parsed.data)
+    return NextResponse.json(updated)
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : "Update failed"
+    if (msg === "Not found") return notFoundResponse()
+    if (msg === "The Uncategorized category cannot be renamed or retyped") {
+      return NextResponse.json({ error: msg }, { status: 400 })
+    }
     return NextResponse.json(
       { error: "Update failed (duplicate name for this type?)" },
       { status: 409 },
@@ -59,19 +34,16 @@ export async function PATCH(req: Request, ctx: Ctx) {
 }
 
 export async function DELETE(_req: Request, ctx: Ctx) {
-  await ensureAppDefaults()
-  const { id } = await ctx.params
-  const existing = await prisma.category.findUnique({ where: { id } })
-  if (!existing) {
-    return NextResponse.json({ error: "Not found" }, { status: 404 })
-  }
-  if (existing.name === UNCATEGORIZED.name && existing.kind === UNCATEGORIZED.kind) {
-    return NextResponse.json(
-      { error: "The Uncategorized category cannot be deleted" },
-      { status: 400 },
-    )
-  }
+  const auth = await apiRequireUser()
+  if (auth.response) return auth.response
 
-  await prisma.category.delete({ where: { id } })
+  const { id } = await ctx.params
+  try {
+    await deleteCategory(prisma, auth.userId, id)
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : "Delete failed"
+    if (msg === "Not found") return notFoundResponse()
+    return NextResponse.json({ error: msg }, { status: 400 })
+  }
   return new NextResponse(null, { status: 204 })
 }

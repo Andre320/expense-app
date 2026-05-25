@@ -7,6 +7,22 @@ const eslintConfig = defineConfig([
   ...nextVitals,
   ...nextTs,
   eslintConfigPrettier,
+  {
+    rules: {
+      "max-lines": ["warn", { max: 250, skipBlankLines: true, skipComments: true }],
+      complexity: ["warn", 15],
+      "@typescript-eslint/consistent-type-imports": [
+        "error",
+        { prefer: "type-imports", fixStyle: "inline-type-imports" },
+      ],
+    },
+  },
+  {
+    files: ["components/ui/**/*.{ts,tsx}"],
+    rules: {
+      "max-lines": "off",
+    },
+  },
   globalIgnores([
     ".next/**",
     "out/**",

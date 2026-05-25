@@ -1,14 +1,17 @@
 import { NextResponse } from "next/server"
-import { ensureAppDefaults, prisma } from "@/lib/db"
-import { serializeSavings } from "@/lib/serialize"
-import { applySavingsGoalMovement } from "@/lib/services/savings-movement.service"
-import { numFromDecimal } from "@/lib/utils"
-import { savingsUpdateZ } from "@/lib/validators"
+import { apiRequireUser, notFoundResponse } from "@/lib/auth/api-context"
+import { prisma } from "@/lib/db/client"
+import { serializeSavings } from "@/lib/shared/serialize"
+import { applySavingsGoalMovement } from "@/lib/savings/services/movement.service"
+import { numFromDecimal } from "@/lib/shared/utils"
+import { savingsUpdateZ } from "@/lib/shared/validators"
 
 type Ctx = { params: Promise<{ id: string }> }
 
 export async function PATCH(req: Request, ctx: Ctx) {
-  await ensureAppDefaults()
+  const auth = await apiRequireUser()
+  if (auth.response) return auth.response
+
   const { id } = await ctx.params
   const json = await req.json().catch(() => null)
   const parsed = savingsUpdateZ.safeParse(json)
@@ -17,11 +20,13 @@ export async function PATCH(req: Request, ctx: Ctx) {
   }
   const d = parsed.data
   try {
+    const goal = await prisma.savingsGoal.findFirst({ where: { id, userId: auth.userId } })
+    if (!goal) return notFoundResponse()
+
     if (d.currentAmount != null) {
-      const goal = await prisma.savingsGoal.findUniqueOrThrow({ where: { id } })
       const current = numFromDecimal(goal.currentAmount)
       if (d.currentAmount !== current) {
-        await applySavingsGoalMovement(prisma, id, {
+        await applySavingsGoalMovement(prisma, auth.userId, id, {
           kind: "ADJUSTMENT",
           amount: d.currentAmount,
           description: "Balance correction",
@@ -43,17 +48,18 @@ export async function PATCH(req: Request, ctx: Ctx) {
     })
     return NextResponse.json(serializeSavings(updated))
   } catch {
-    return NextResponse.json({ error: "Not found" }, { status: 404 })
+    return notFoundResponse()
   }
 }
 
 export async function DELETE(_req: Request, ctx: Ctx) {
-  await ensureAppDefaults()
+  const auth = await apiRequireUser()
+  if (auth.response) return auth.response
+
   const { id } = await ctx.params
-  try {
-    await prisma.savingsGoal.delete({ where: { id } })
-  } catch {
-    return NextResponse.json({ error: "Not found" }, { status: 404 })
-  }
+  const existing = await prisma.savingsGoal.findFirst({ where: { id, userId: auth.userId } })
+  if (!existing) return notFoundResponse()
+
+  await prisma.savingsGoal.delete({ where: { id } })
   return new NextResponse(null, { status: 204 })
 }

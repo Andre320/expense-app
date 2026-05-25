@@ -1,22 +1,26 @@
 import { NextResponse } from "next/server"
-import { ensureAppDefaults, prisma } from "@/lib/db"
-import { createRsuPlan, listRsuPlanSummaries } from "@/lib/services/rsu-plan.service"
-import { rsuPlanCreateZ } from "@/lib/validators"
+import { apiRequireUser } from "@/lib/auth/api-context"
+import { prisma } from "@/lib/db/client"
+import { createRsuPlan, listRsuPlanSummaries } from "@/lib/rsu/services/plan.service"
+import { rsuPlanCreateZ } from "@/lib/shared/validators"
 
 export async function GET() {
-  await ensureAppDefaults()
-  return NextResponse.json(await listRsuPlanSummaries(prisma))
+  const ctx = await apiRequireUser()
+  if (ctx.response) return ctx.response
+  return NextResponse.json(await listRsuPlanSummaries(prisma, ctx.userId))
 }
 
 export async function POST(req: Request) {
-  await ensureAppDefaults()
+  const ctx = await apiRequireUser()
+  if (ctx.response) return ctx.response
+
   const json = await req.json().catch(() => null)
   const parsed = rsuPlanCreateZ.safeParse(json)
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })
   }
   try {
-    const created = await createRsuPlan(prisma, parsed.data)
+    const created = await createRsuPlan(prisma, ctx.userId, parsed.data)
     return NextResponse.json(created, { status: 201 })
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Create failed"

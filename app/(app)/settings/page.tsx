@@ -21,8 +21,8 @@ import {
 import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { CategoriesManager } from "@/components/categories-manager"
-import { StoreMappingsPanel } from "@/components/store-mappings-panel"
+import { CategoriesManager } from "@/components/features/categories/categories-manager"
+import { StoreMappingsPanel } from "@/components/features/import/store-mappings-panel"
 
 const currencySchema = z.object({
   crCrcPerUsd: z.number().positive(),

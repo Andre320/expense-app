@@ -1,11 +1,15 @@
 import { NextResponse } from "next/server"
-import { ensureAppDefaults, prisma } from "@/lib/db"
-import { knownStoreUpdateZ } from "@/lib/validators"
+import { apiRequireUser, notFoundResponse } from "@/lib/auth/api-context"
+import { prisma } from "@/lib/db/client"
+import { deleteKnownStore, updateKnownStore } from "@/lib/store/services/known-store.service"
+import { knownStoreUpdateZ } from "@/lib/shared/validators"
 
 type Ctx = { params: Promise<{ id: string }> }
 
 export async function PATCH(req: Request, ctx: Ctx) {
-  await ensureAppDefaults()
+  const auth = await apiRequireUser()
+  if (auth.response) return auth.response
+
   const { id } = await ctx.params
   const json = await req.json().catch(() => null)
   const parsed = knownStoreUpdateZ.safeParse(json)
@@ -13,65 +17,28 @@ export async function PATCH(req: Request, ctx: Ctx) {
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })
   }
 
-  if (parsed.data.categoryId) {
-    const cat = await prisma.category.findFirst({
-      where: { id: parsed.data.categoryId },
-    })
-    if (!cat) {
-      return NextResponse.json({ error: "Category not found" }, { status: 400 })
-    }
-  }
-
-  if (parsed.data.pattern) {
-    const patternNorm = parsed.data.pattern.trim().toLowerCase()
-    const all = await prisma.knownStore.findMany({
-      where: { id: { not: id } },
-      select: { pattern: true },
-    })
-    if (all.some((s) => s.pattern.toLowerCase() === patternNorm)) {
-      return NextResponse.json(
-        { error: "Another mapping already uses this pattern" },
-        { status: 409 },
-      )
-    }
-  }
-
   try {
-    const updated = await prisma.knownStore.update({
-      where: { id },
-      data: {
-        ...(parsed.data.pattern != null && {
-          pattern: parsed.data.pattern.trim(),
-        }),
-        ...(parsed.data.displayName != null && {
-          displayName: parsed.data.displayName.trim(),
-        }),
-        ...(parsed.data.categoryId != null && {
-          categoryId: parsed.data.categoryId,
-        }),
-      },
-      include: { category: { select: { id: true, name: true, kind: true } } },
-    })
-    return NextResponse.json({
-      id: updated.id,
-      pattern: updated.pattern,
-      displayName: updated.displayName,
-      categoryId: updated.categoryId,
-      categoryName: updated.category.name,
-      position: updated.position,
-    })
-  } catch {
-    return NextResponse.json({ error: "Not found" }, { status: 404 })
+    const updated = await updateKnownStore(prisma, auth.userId, id, parsed.data)
+    return NextResponse.json(updated)
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : "Update failed"
+    if (msg === "Not found") return notFoundResponse()
+    if (msg === "Category not found") {
+      return NextResponse.json({ error: msg }, { status: 400 })
+    }
+    return NextResponse.json({ error: msg }, { status: 409 })
   }
 }
 
 export async function DELETE(_req: Request, ctx: Ctx) {
-  await ensureAppDefaults()
+  const auth = await apiRequireUser()
+  if (auth.response) return auth.response
+
   const { id } = await ctx.params
   try {
-    await prisma.knownStore.delete({ where: { id } })
+    await deleteKnownStore(prisma, auth.userId, id)
   } catch {
-    return NextResponse.json({ error: "Not found" }, { status: 404 })
+    return notFoundResponse()
   }
   return new NextResponse(null, { status: 204 })
 }

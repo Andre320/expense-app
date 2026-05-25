@@ -3,16 +3,19 @@
 import * as React from "react"
 import Link from "next/link"
 import { useQuery } from "@tanstack/react-query"
-import { IncomeBonusesManager, MONTH_LABELS } from "@/components/income-bonuses-manager"
-import type { IncomeBonusDto } from "@/components/income-bonuses-manager"
-import { IncomePlannerPanel } from "@/components/income-planner-panel"
+import {
+  IncomeBonusesManager,
+  MONTH_LABELS,
+} from "@/components/features/income/income-bonuses-manager"
+import type { IncomeBonusDto } from "@/components/features/income/income-bonuses-manager"
+import { IncomePlannerPanel } from "@/components/features/income/income-planner-panel"
 import { MetricStat } from "@/components/patterns/metric-stat"
 import { PageIntro } from "@/components/patterns/page-intro"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Separator } from "@/components/ui/separator"
-import { monthlySurplusForForecast } from "@/lib/forecast-planning"
-import { formatMoneyBase } from "@/lib/format-money"
-import { REPORTING_CURRENCY } from "@/lib/app-currency"
+import { monthlySurplusForForecast } from "@/lib/planning/forecast-planning"
+import { formatMoneyBase } from "@/lib/shared/format-money"
+import { REPORTING_CURRENCY } from "@/lib/shared/app-currency"
 
 async function fetchSummary() {
   const res = await fetch("/api/analytics/summary")
