@@ -1,15 +1,18 @@
 import { NextResponse } from "next/server"
-import { ensureAppDefaults, prisma } from "@/lib/db"
-import { listRsuVests } from "@/lib/services/rsu-plan.service"
+import { apiRequireUser, notFoundResponse } from "@/lib/auth/api-context"
+import { prisma } from "@/lib/db/client"
+import { listRsuVests } from "@/lib/rsu/services/plan.service"
 
 type Ctx = { params: Promise<{ id: string }> }
 
 export async function GET(_req: Request, ctx: Ctx) {
-  await ensureAppDefaults()
+  const auth = await apiRequireUser()
+  if (auth.response) return auth.response
+
   const { id } = await ctx.params
   try {
-    return NextResponse.json(await listRsuVests(prisma, id))
+    return NextResponse.json(await listRsuVests(prisma, auth.userId, id))
   } catch {
-    return NextResponse.json({ error: "Not found" }, { status: 404 })
+    return notFoundResponse()
   }
 }

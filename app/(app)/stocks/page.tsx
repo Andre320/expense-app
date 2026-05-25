@@ -4,13 +4,13 @@ import * as React from "react"
 import { useQuery } from "@tanstack/react-query"
 import { ChevronDown, ChevronUp } from "lucide-react"
 import { PageIntro } from "@/components/patterns/page-intro"
-import { RsuPlansManager } from "@/components/rsu-plans-manager"
-import { StockPriceChart } from "@/components/stock-price-chart"
+import { RsuPlansManager } from "@/components/features/rsu/rsu-plans-manager"
+import { StockPriceChart } from "@/components/features/stocks/stock-price-chart"
 import { Button } from "@/components/ui/button"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { DEFAULT_STOCK_TICKER } from "@/lib/stock-defaults"
-import { buildStockTickerOptions, normalizeStockTicker } from "@/lib/stock-ticker-options"
+import { DEFAULT_STOCK_TICKER } from "@/lib/stocks/defaults"
+import { buildStockTickerOptions, normalizeStockTicker } from "@/lib/stocks/ticker-options"
 
 type RsuPlanListItem = {
   plan: { ticker: string }

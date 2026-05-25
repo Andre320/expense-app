@@ -1,20 +1,27 @@
 import { NextResponse } from "next/server"
-import { ensureAppDefaults, prisma } from "@/lib/db"
-import { createIncomeBonus, listSerializedIncomeBonuses } from "@/lib/services/income-bonus.service"
-import { incomeBonusCreateZ } from "@/lib/validators"
+import { apiRequireUser } from "@/lib/auth/api-context"
+import { prisma } from "@/lib/db/client"
+import {
+  createIncomeBonus,
+  listSerializedIncomeBonuses,
+} from "@/lib/income/services/income-bonus.service"
+import { incomeBonusCreateZ } from "@/lib/shared/validators"
 
 export async function GET() {
-  await ensureAppDefaults()
-  return NextResponse.json(await listSerializedIncomeBonuses(prisma))
+  const ctx = await apiRequireUser()
+  if (ctx.response) return ctx.response
+  return NextResponse.json(await listSerializedIncomeBonuses(prisma, ctx.userId))
 }
 
 export async function POST(req: Request) {
-  await ensureAppDefaults()
+  const ctx = await apiRequireUser()
+  if (ctx.response) return ctx.response
+
   const json = await req.json().catch(() => null)
   const parsed = incomeBonusCreateZ.safeParse(json)
   if (!parsed.success) {
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })
   }
-  const created = await createIncomeBonus(prisma, parsed.data)
+  const created = await createIncomeBonus(prisma, ctx.userId, parsed.data)
   return NextResponse.json(created, { status: 201 })
 }

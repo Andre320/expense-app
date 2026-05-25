@@ -1,4 +1,4 @@
-// Local-first SQLite schema for expense & financial planning
+// Multi-user Postgres schema for expense & financial planning
 
 generator client {
   provider = "prisma-client"
@@ -6,7 +6,7 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
+  provider = "postgresql"
 }
 
 enum TransactionKind {
@@ -26,8 +26,71 @@ enum RsuVestStatus {
   RECEIVED
 }
 
+// --- Auth.js models ---
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  emailVerified DateTime?
+  image         String?
+  passwordHash  String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  accounts       Account[]
+  sessions       Session[]
+  appSettings    AppSettings?
+  incomeBonuses  IncomeBonus[]
+  categories     Category[]
+  knownStores    KnownStore[]
+  tags           Tag[]
+  transactions   Transaction[]
+  savingsGoals   SavingsGoal[]
+  savingsAccounts SavingsAccount[]
+  rsuPlans       RsuPlan[]
+}
+
+model Account {
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@id([provider, providerAccountId])
+}
+
+model Session {
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@id([identifier, token])
+}
+
+// --- App domain ---
+
 model AppSettings {
-  id String @id @default("default")
+  id     String @id @default(cuid())
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   /// Saved salary profile for Income tab (gross input amount in crSalaryCurrency)
   crSalaryGross    Decimal @default(0)
@@ -49,6 +112,8 @@ model AppSettings {
 /// Fixed gross bonus that repeats in selected calendar months every year.
 model IncomeBonus {
   id            String   @id @default(cuid())
+  userId        String
+  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   name          String
   grossAmount   Decimal
   grossCurrency String   @default("CRC")
@@ -57,10 +122,14 @@ model IncomeBonus {
   position      Int      @default(0)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
+
+  @@index([userId])
 }
 
 model Category {
   id           String            @id @default(cuid())
+  userId       String
+  user         User              @relation(fields: [userId], references: [id], onDelete: Cascade)
   name         String
   kind         TransactionKind
   color        String?           @default("#6366f1")
@@ -68,12 +137,15 @@ model Category {
   transactions Transaction[]
   knownStores  KnownStore[]
 
-  @@unique([name, kind])
+  @@unique([userId, name, kind])
+  @@index([userId])
 }
 
 /// Map messy bank merchant text (substring match) to a clean label + category.
 model KnownStore {
   id          String   @id @default(cuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   pattern     String
   displayName String
   categoryId  String
@@ -82,17 +154,25 @@ model KnownStore {
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
+  @@index([userId])
   @@index([pattern])
 }
 
 model Tag {
   id           String           @id @default(cuid())
-  name         String           @unique
+  userId       String
+  user         User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name         String
   transactions TransactionTag[]
+
+  @@unique([userId, name])
+  @@index([userId])
 }
 
 model Transaction {
   id          String            @id @default(cuid())
+  userId      String
+  user        User              @relation(fields: [userId], references: [id], onDelete: Cascade)
   occurredAt  DateTime
   kind        TransactionKind
   description String            @default("")
@@ -113,6 +193,7 @@ model Transaction {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@index([userId])
   @@index([occurredAt])
   @@index([kind])
 }
@@ -128,6 +209,8 @@ model TransactionTag {
 
 model SavingsGoal {
   id             String   @id @default(cuid())
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   name           String
   /// CRC or USD — amounts below are stored in this currency.
   currency       String   @default("CRC")
@@ -139,6 +222,8 @@ model SavingsGoal {
   movements      SavingsGoalMovement[]
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
+
+  @@index([userId])
 }
 
 model SavingsGoalMovement {
@@ -158,6 +243,8 @@ model SavingsGoalMovement {
 /// Real savings account (bank, wallet) — balance in `currency`.
 model SavingsAccount {
   id        String                   @id @default(cuid())
+  userId    String
+  user      User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
   name      String
   /// CRC or USD — balance is stored in this currency.
   currency  String                   @default("CRC")
@@ -167,6 +254,8 @@ model SavingsAccount {
   movements SavingsAccountMovement[]
   createdAt DateTime                 @default(now())
   updatedAt DateTime                 @updatedAt
+
+  @@index([userId])
 }
 
 model SavingsAccountMovement {
@@ -186,6 +275,8 @@ model SavingsAccountMovement {
 /// RSU grant plan — fixed share count vested on a recurring schedule.
 model RsuPlan {
   id                   String    @id @default(cuid())
+  userId               String
+  user                 User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   name                 String
   ticker               String
   totalShares          Decimal
@@ -199,6 +290,8 @@ model RsuPlan {
   vests                RsuVest[]
   createdAt            DateTime  @default(now())
   updatedAt            DateTime  @updatedAt
+
+  @@index([userId])
 }
 
 model RsuVest {

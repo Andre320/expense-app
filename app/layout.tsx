@@ -2,6 +2,7 @@ import type { Metadata } from "next"
 import { Geist, Geist_Mono } from "next/font/google"
 import { Toaster } from "sonner"
 import { QueryProvider } from "@/components/providers/query-provider"
+import { AuthSessionProvider } from "@/components/providers/session-provider"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import "./globals.css"
 
@@ -17,7 +18,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Ledger — Expense & Forecast",
-  description: "Local-first expense tracking and financial forecasting",
+  description: "Multi-user expense tracking and financial forecasting",
 }
 
 export default function RootLayout({
@@ -28,10 +29,12 @@ export default function RootLayout({
   return (
     <html lang="en" className={`${geistSans.variable} ${geistMono.variable} dark h-full`}>
       <body className="min-h-full font-sans antialiased">
-        <QueryProvider>
-          <TooltipProvider delayDuration={300}>{children}</TooltipProvider>
-          <Toaster richColors theme="dark" position="bottom-right" />
-        </QueryProvider>
+        <AuthSessionProvider>
+          <QueryProvider>
+            <TooltipProvider delayDuration={300}>{children}</TooltipProvider>
+            <Toaster richColors theme="dark" position="bottom-right" />
+          </QueryProvider>
+        </AuthSessionProvider>
       </body>
     </html>
   )

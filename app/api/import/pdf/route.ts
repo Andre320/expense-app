@@ -1,10 +1,12 @@
 import { NextResponse } from "next/server"
-import { ensureAppDefaults } from "@/lib/db"
+import { apiRequireUser } from "@/lib/auth/api-context"
 
 export const runtime = "nodejs"
 
 export async function POST(req: Request) {
-  await ensureAppDefaults()
+  const auth = await apiRequireUser()
+  if (auth.response) return auth.response
+
   const form = await req.formData().catch(() => null)
   const file = form?.get("file")
   if (!file || !(file instanceof File)) {

@@ -1,6 +1,6 @@
 # Expense App
 
-Local-first expense and financial planning app built with Next.js and SQLite.
+Multi-user expense and financial planning app built with Next.js, PostgreSQL, and Auth.js.
 
 ## Getting Started
 
@@ -14,23 +14,34 @@ Copy the example env file and adjust if needed:
 cp .env.example .env
 ```
 
-Required variable:
+Required variables:
 
 ```env
-DATABASE_URL="file:./dev.db"
+DATABASE_URL="postgresql://expense:expense@localhost:5432/expense_app?schema=public"
+AUTH_SECRET="generate-with-openssl-rand-base64-32"
 ```
 
-This points Prisma at a SQLite file (`dev.db`) in the project root. The database file is gitignored.
+Generate `AUTH_SECRET`:
 
-### 2. Install dependencies
+```bash
+openssl rand -base64 32
+```
+
+### 2. Start PostgreSQL
+
+```bash
+docker compose up -d
+```
+
+### 3. Install dependencies
 
 ```bash
 pnpm install
 ```
 
-This runs `prisma generate` via `postinstall`, producing the Prisma client at `app/generated/prisma` (also gitignored).
+This runs `prisma generate` via `postinstall`, producing the Prisma client at `app/generated/prisma` (gitignored).
 
-### 3. Database setup
+### 4. Database setup
 
 Apply migrations and optionally load demo data:
 
@@ -42,29 +53,40 @@ Or run the steps individually:
 
 ```bash
 pnpm run db:migrate   # interactive — creates migration when schema changes
-pnpm run db:seed      # optional demo categories, settings, savings goal
+pnpm run db:seed      # demo user + sample categories, settings, savings, RSU
 ```
 
 For CI or non-interactive environments, use `prisma migrate deploy` (included in `db:setup`).
 
-### 4. Start the dev server
+After seeding, sign in with:
+
+- Email: `demo@example.com`
+- Password: `demo-password-123`
+
+### 5. Start the dev server
 
 ```bash
 pnpm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000).
+Open [http://localhost:3000](http://localhost:3000). Unauthenticated requests redirect to `/login`.
+
+## Authentication
+
+- **Auth.js v5** with email/password credentials (JWT sessions)
+- Register at `/register`; each user gets isolated settings, categories, transactions, savings, and RSU data
+- API routes require a valid session (except `/api/auth/*`)
 
 ## Database
 
-The app uses **SQLite** via Prisma 7 with the `better-sqlite3` driver adapter. Data is stored in a single local file (`dev.db` by default).
+The app uses **PostgreSQL** via Prisma 7.
 
-| Script                | Purpose                                                           |
-| --------------------- | ----------------------------------------------------------------- |
-| `pnpm run db:migrate` | Apply schema changes interactively (creates new migration files)  |
-| `pnpm run db:push`    | Push schema to DB without creating a migration (prototyping only) |
-| `pnpm run db:seed`    | Load optional demo data                                           |
-| `pnpm run db:setup`   | Apply existing migrations + seed (good for first-time setup)      |
+| Script                | Purpose                                                          |
+| --------------------- | ---------------------------------------------------------------- |
+| `pnpm run db:migrate` | Apply schema changes interactively (creates new migration files) |
+| `pnpm run db:push`    | Push schema to DB without creating a migration (prototyping)     |
+| `pnpm run db:seed`    | Load demo user and sample data                                   |
+| `pnpm run db:setup`   | Apply existing migrations + seed                                 |
 
 ### Schema changes
 
@@ -72,14 +94,13 @@ The app uses **SQLite** via Prisma 7 with the `better-sqlite3` driver adapter. D
 2. Run `pnpm run db:migrate` to create and apply a migration
 3. Commit the new migration SQL under `prisma/migrations/`
 
-API routes call `ensureAppDefaults()` on each request, so a fresh database works without seeding — seed is only for sample data.
-
 ## Scripts
 
 ```bash
 pnpm run dev          # development server
 pnpm run build        # production build
 pnpm run start        # production server
+pnpm run check        # format + lint + test coverage
 pnpm run lint         # ESLint
 pnpm run test         # Vitest
 ```

@@ -10,7 +10,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { SELECT_NONE } from "@/components/select-field"
-import { cn } from "@/lib/utils"
+import { cn } from "@/lib/shared/utils"
 
 type Option = { value: string; label: string }
 

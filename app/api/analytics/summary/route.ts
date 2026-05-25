@@ -1,9 +1,11 @@
 import { NextResponse } from "next/server"
-import { ensureAppDefaults, prisma } from "@/lib/db"
-import { getAnalyticsSummary } from "@/lib/services/analytics.service"
+import { apiRequireUser } from "@/lib/auth/api-context"
+import { prisma } from "@/lib/db/client"
+import { getAnalyticsSummary } from "@/lib/income/services/analytics.service"
 
 export async function GET() {
-  await ensureAppDefaults()
-  const payload = await getAnalyticsSummary(prisma)
+  const ctx = await apiRequireUser()
+  if (ctx.response) return ctx.response
+  const payload = await getAnalyticsSummary(prisma, ctx.userId)
   return NextResponse.json(payload)
 }

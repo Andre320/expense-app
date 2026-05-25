@@ -1,13 +1,19 @@
 import { NextResponse } from "next/server"
-import { ensureAppDefaults, prisma } from "@/lib/db"
-import { buildBacImportPreview, type BacImportPreviewRow } from "@/lib/services/importBac.service"
+import { apiRequireUser } from "@/lib/auth/api-context"
+import { prisma } from "@/lib/db/client"
+import {
+  buildBacImportPreview,
+  type BacImportPreviewRow,
+} from "@/lib/import/services/bac-import.service"
 
 export const runtime = "nodejs"
 
 export type { BacImportPreviewRow }
 
 export async function POST(req: Request) {
-  await ensureAppDefaults()
+  const auth = await apiRequireUser()
+  if (auth.response) return auth.response
+
   const form = await req.formData().catch(() => null)
   const file = form?.get("file")
   if (!file || !(file instanceof File)) {
@@ -20,7 +26,7 @@ export async function POST(req: Request) {
     const textRes = await parser.getText()
     await parser.destroy()
     const text = textRes.text ?? ""
-    const { transactions, warnings } = await buildBacImportPreview(prisma, text)
+    const { transactions, warnings } = await buildBacImportPreview(prisma, auth.userId, text)
 
     return NextResponse.json({
       bank: "BAC",

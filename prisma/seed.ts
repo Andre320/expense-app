@@ -1,14 +1,20 @@
 import "dotenv/config"
+import bcrypt from "bcryptjs"
 import { PrismaClient } from "../app/generated/prisma/client"
-import { createSqliteAdapter } from "../lib/prisma-adapter"
+import { ensureUserDefaults } from "../lib/auth/onboarding"
+import { createPostgresAdapter } from "../lib/db/prisma-adapter"
 
-const prisma = new PrismaClient({ adapter: createSqliteAdapter() })
+const prisma = new PrismaClient({ adapter: createPostgresAdapter() })
 
-async function main() {
-  await prisma.appSettings.upsert({
-    where: { id: "default" },
-    create: {
-      id: "default",
+const DEMO_EMAIL = "demo@example.com"
+const DEMO_PASSWORD = "demo-password-123"
+
+async function seedUserData(userId: string) {
+  await ensureUserDefaults(userId, prisma)
+
+  await prisma.appSettings.update({
+    where: { userId },
+    data: {
       crSalaryGross: "850000",
       crSalaryCurrency: "CRC",
       crPayPeriod: "MONTHLY",
@@ -17,35 +23,12 @@ async function main() {
       crPensionComplementariaPct: "0",
       crEsppPct: "0",
     },
-    update: {},
   })
 
-  const defaults = [
-    { name: "Salary", kind: "INCOME" as const, position: 1, color: "#22d3ee" },
-    { name: "Freelance", kind: "INCOME" as const, position: 2, color: "#38bdf8" },
-    { name: "Housing", kind: "EXPENSE" as const, position: 1, color: "#f472b6" },
-    { name: "Food", kind: "EXPENSE" as const, position: 2, color: "#fb923c" },
-    { name: "Transport", kind: "EXPENSE" as const, position: 3, color: "#a78bfa" },
-    { name: "Subscriptions", kind: "EXPENSE" as const, position: 4, color: "#94a3b8" },
-    {
-      name: "Uncategorized",
-      kind: "EXPENSE" as const,
-      position: 99,
-      color: "#71717a",
-    },
-  ]
-
-  for (const c of defaults) {
-    await prisma.category.upsert({
-      where: { name_kind: { name: c.name, kind: c.kind } },
-      create: c,
-      update: { position: c.position, color: c.color },
-    })
-  }
-
-  if ((await prisma.savingsGoal.count()) === 0) {
+  if ((await prisma.savingsGoal.count({ where: { userId } })) === 0) {
     const goal = await prisma.savingsGoal.create({
       data: {
+        userId,
         name: "Emergency fund",
         targetAmount: "20000",
         currentAmount: "8500",
@@ -63,9 +46,10 @@ async function main() {
     })
   }
 
-  if ((await prisma.savingsAccount.count()) === 0) {
+  if ((await prisma.savingsAccount.count({ where: { userId } })) === 0) {
     const account = await prisma.savingsAccount.create({
       data: {
+        userId,
         name: "Main savings",
         currency: "CRC",
         balance: "12000",
@@ -82,9 +66,10 @@ async function main() {
     })
   }
 
-  if ((await prisma.incomeBonus.count()) === 0) {
+  if ((await prisma.incomeBonus.count({ where: { userId } })) === 0) {
     await prisma.incomeBonus.create({
       data: {
+        userId,
         name: "Aguinaldo (example)",
         grossAmount: "200000",
         grossCurrency: "CRC",
@@ -94,8 +79,8 @@ async function main() {
     })
   }
 
-  if ((await prisma.rsuPlan.count()) === 0) {
-    const { buildVestSchedule, settleVestReceive } = await import("../lib/rsu-vesting")
+  if ((await prisma.rsuPlan.count({ where: { userId } })) === 0) {
+    const { buildVestSchedule, settleVestReceive } = await import("../lib/rsu/vesting")
     const grantDate = new Date("2022-01-01T12:00:00")
     const exampleVestPriceUsd = 150
     const schedule = buildVestSchedule({
@@ -108,6 +93,7 @@ async function main() {
 
     const plan = await prisma.rsuPlan.create({
       data: {
+        userId,
         name: "Plan 1 (example)",
         ticker: "SNOW",
         totalShares: "100",
@@ -158,6 +144,22 @@ async function main() {
       })
     }
   }
+}
+
+async function main() {
+  const passwordHash = await bcrypt.hash(DEMO_PASSWORD, 12)
+  const user = await prisma.user.upsert({
+    where: { email: DEMO_EMAIL },
+    create: {
+      email: DEMO_EMAIL,
+      name: "Demo User",
+      passwordHash,
+    },
+    update: {},
+  })
+
+  await seedUserData(user.id)
+  console.log(`Seeded demo user ${DEMO_EMAIL} (password: ${DEMO_PASSWORD})`)
 }
 
 main()

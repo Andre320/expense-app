@@ -3,20 +3,20 @@
 import Link from "next/link"
 import { useQuery } from "@tanstack/react-query"
 import { ForecastMilestones } from "@/components/forecast-milestones"
-import { MONTH_LABELS } from "@/components/income-bonuses-manager"
+import { MONTH_LABELS } from "@/components/features/income/income-bonuses-manager"
 import { MetricStat } from "@/components/patterns/metric-stat"
 import { PageIntro } from "@/components/patterns/page-intro"
-import { SavingsAccountsManager } from "@/components/savings-accounts-manager"
-import { SavingsGoalsManager } from "@/components/savings-goals-manager"
+import { SavingsAccountsManager } from "@/components/features/savings/savings-accounts-manager"
+import { SavingsGoalsManager } from "@/components/features/savings/savings-goals-manager"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import {
   goalsForForecast,
   monthlySurplusForForecast,
   savingsGoalMilestones,
   type SavingsGoalForecastInput,
-} from "@/lib/forecast-planning"
-import { formatMoneyBase } from "@/lib/format-money"
-import { REPORTING_CURRENCY } from "@/lib/app-currency"
+} from "@/lib/planning/forecast-planning"
+import { formatMoneyBase } from "@/lib/shared/format-money"
+import { REPORTING_CURRENCY } from "@/lib/shared/app-currency"
 
 async function fetchSummary() {
   const res = await fetch("/api/analytics/summary")

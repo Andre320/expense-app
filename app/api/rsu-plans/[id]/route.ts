@@ -1,22 +1,27 @@
 import { NextResponse } from "next/server"
-import { ensureAppDefaults, prisma } from "@/lib/db"
-import { deleteRsuPlan, getRsuPlanDetail, updateRsuPlan } from "@/lib/services/rsu-plan.service"
-import { rsuPlanUpdateZ } from "@/lib/validators"
+import { apiRequireUser, notFoundResponse } from "@/lib/auth/api-context"
+import { prisma } from "@/lib/db/client"
+import { deleteRsuPlan, getRsuPlanDetail, updateRsuPlan } from "@/lib/rsu/services/plan.service"
+import { rsuPlanUpdateZ } from "@/lib/shared/validators"
 
 type Ctx = { params: Promise<{ id: string }> }
 
 export async function GET(_req: Request, ctx: Ctx) {
-  await ensureAppDefaults()
+  const auth = await apiRequireUser()
+  if (auth.response) return auth.response
+
   const { id } = await ctx.params
   try {
-    return NextResponse.json(await getRsuPlanDetail(prisma, id))
+    return NextResponse.json(await getRsuPlanDetail(prisma, auth.userId, id))
   } catch {
-    return NextResponse.json({ error: "Not found" }, { status: 404 })
+    return notFoundResponse()
   }
 }
 
 export async function PATCH(req: Request, ctx: Ctx) {
-  await ensureAppDefaults()
+  const auth = await apiRequireUser()
+  if (auth.response) return auth.response
+
   const { id } = await ctx.params
   const json = await req.json().catch(() => null)
   const parsed = rsuPlanUpdateZ.safeParse(json)
@@ -24,19 +29,21 @@ export async function PATCH(req: Request, ctx: Ctx) {
     return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })
   }
   try {
-    return NextResponse.json(await updateRsuPlan(prisma, id, parsed.data))
+    return NextResponse.json(await updateRsuPlan(prisma, auth.userId, id, parsed.data))
   } catch {
-    return NextResponse.json({ error: "Not found" }, { status: 404 })
+    return notFoundResponse()
   }
 }
 
 export async function DELETE(_req: Request, ctx: Ctx) {
-  await ensureAppDefaults()
+  const auth = await apiRequireUser()
+  if (auth.response) return auth.response
+
   const { id } = await ctx.params
   try {
-    await deleteRsuPlan(prisma, id)
+    await deleteRsuPlan(prisma, auth.userId, id)
   } catch {
-    return NextResponse.json({ error: "Not found" }, { status: 404 })
+    return notFoundResponse()
   }
   return new NextResponse(null, { status: 204 })
 }

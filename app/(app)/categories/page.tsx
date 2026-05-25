@@ -1,7 +1,7 @@
 "use client"
 
 import Link from "next/link"
-import { CategoriesManager } from "@/components/categories-manager"
+import { CategoriesManager } from "@/components/features/categories/categories-manager"
 
 export default function CategoriesPage() {
   return (

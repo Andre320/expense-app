@@ -1,0 +1,14 @@
+services:
+  postgres:
+    image: postgres:16
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: expense
+      POSTGRES_PASSWORD: expense
+      POSTGRES_DB: expense_app
+    volumes:
+      - expense_pg_data:/var/lib/postgresql/data
+
+volumes:
+  expense_pg_data:
