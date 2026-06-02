@@ -3,6 +3,14 @@ import { roundMoney } from "@/lib/shared/currency"
 export type SavingsMovementKind = "DEPOSIT" | "WITHDRAWAL" | "ADJUSTMENT" | "INITIAL"
 
 /** Apply a movement to a balance. For ADJUSTMENT, `amount` is the new absolute balance. */
+export function validateSavingsMovementAmount(kind: SavingsMovementKind, amount: number) {
+  if (kind === "ADJUSTMENT") {
+    if (amount < 0) throw new Error("Adjustment balance cannot be negative")
+    return
+  }
+  if (amount <= 0) throw new Error("Amount must be positive")
+}
+
 export function applyMovementToBalance(
   currentBalance: number,
   kind: SavingsMovementKind,

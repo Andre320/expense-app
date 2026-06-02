@@ -4,6 +4,7 @@ import Link from "next/link"
 import { useMutation, useQueryClient } from "@tanstack/react-query"
 import * as React from "react"
 import { toast } from "sonner"
+import { parseApiError } from "@/lib/shared/api-error"
 import { PageIntro } from "@/components/patterns/page-intro"
 import { SelectField } from "@/components/select-field"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -26,7 +27,7 @@ export function ImportWorkspace({ hideIntro }: ImportWorkspaceProps) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ rows }),
       })
-      if (!res.ok) throw new Error("Import failed")
+      if (!res.ok) throw await parseApiError(res)
       return res.json() as Promise<{ created: number; errors: string[] }>
     },
     onSuccess: (r) => {
@@ -36,7 +37,7 @@ export function ImportWorkspace({ hideIntro }: ImportWorkspaceProps) {
       qc.invalidateQueries({ queryKey: ["analytics"] })
       setBacPreview([])
     },
-    onError: () => toast.error("Import failed"),
+    onError: (e: Error) => toast.error(e.message),
   })
 
   const bacParseMut = useMutation({
@@ -44,10 +45,7 @@ export function ImportWorkspace({ hideIntro }: ImportWorkspaceProps) {
       const fd = new FormData()
       fd.set("file", file)
       const res = await fetch("/api/import/pdf/bac", { method: "POST", body: fd })
-      if (!res.ok) {
-        const j = await res.json().catch(() => ({}))
-        throw new Error(j?.error ?? "BAC parse failed")
-      }
+      if (!res.ok) throw await parseApiError(res)
       return res.json() as Promise<{
         transactions: BacPreviewRow[]
         warnings: string[]

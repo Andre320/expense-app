@@ -16,6 +16,10 @@ describe("parseBonusMonths", () => {
     expect(parseBonusMonths("not-json")).toEqual([])
   })
 
+  it("returns empty when JSON is not an array", () => {
+    expect(parseBonusMonths('{"months":3}')).toEqual([])
+  })
+
   it("filters invalid month numbers", () => {
     expect(parseBonusMonths("[0,13,5]")).toEqual([5])
   })

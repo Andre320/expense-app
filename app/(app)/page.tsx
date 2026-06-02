@@ -4,6 +4,7 @@ import Link from "next/link"
 import { useQuery } from "@tanstack/react-query"
 import { ForecastMilestones } from "@/components/forecast-milestones"
 import { PageIntro } from "@/components/patterns/page-intro"
+import { QueryErrorPanel } from "@/components/patterns/query-error-panel"
 import { RecentLedger } from "@/components/features/transactions/recent-ledger"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -15,42 +16,51 @@ import {
   type DashboardSummary,
 } from "@/components/features/dashboard/use-dashboard-data"
 import type { SavingsGoalForecastInput } from "@/lib/planning/forecast-planning"
+import { fetchJson } from "@/lib/shared/api-error"
 
 async function fetchSummary(): Promise<DashboardSummary> {
-  const res = await fetch("/api/analytics/summary")
-  if (!res.ok) throw new Error("Failed to load summary")
-  return res.json()
+  return fetchJson("/api/analytics/summary")
 }
 
 async function fetchGoals(): Promise<SavingsGoalForecastInput[]> {
-  const res = await fetch("/api/savings")
-  if (!res.ok) throw new Error("goals")
-  return res.json()
+  return fetchJson("/api/savings")
 }
 
 export default function DashboardPage() {
-  const { data, isPending, isError } = useQuery({
+  const summaryQuery = useQuery({
     queryKey: ["analytics", "summary"],
     queryFn: fetchSummary,
   })
-  const { data: goals } = useQuery({
+  const goalsQuery = useQuery({
     queryKey: ["savings"],
     queryFn: fetchGoals,
   })
 
+  const { data, isPending, isError, error, refetch } = summaryQuery
+
   if (isPending) {
     return <div className="text-muted-foreground text-sm">Loading dashboard…</div>
   }
+
   if (isError || !data) {
     return (
-      <div className="text-sm text-red-400">
-        Could not load analytics. Is the database migrated?
+      <div className="space-y-8">
+        <PageIntro
+          eyebrow="Overview"
+          title="Dashboard"
+          description="Cash flow, planned surplus, savings timeline, and recent ledger entries."
+        />
+        <QueryErrorPanel
+          title="Could not load dashboard"
+          message={error?.message ?? "Analytics are unavailable."}
+          onRetry={() => void refetch()}
+        />
       </div>
     )
   }
 
   const { baseCurrency, chartData, netLast, surplus, milestones, monthLabel, bonusNames } =
-    deriveDashboardData(data, goals)
+    deriveDashboardData(data, goalsQuery.data)
 
   return (
     <div className="space-y-10">
@@ -72,6 +82,14 @@ export default function DashboardPage() {
           </>
         }
       />
+
+      {goalsQuery.isError ? (
+        <QueryErrorPanel
+          title="Could not load savings goals"
+          message={goalsQuery.error?.message ?? "Forecast milestones may be incomplete."}
+          onRetry={() => void goalsQuery.refetch()}
+        />
+      ) : null}
 
       {!data.hasSalaryProfile ? (
         <Card className="border-border bg-muted/10 border-dashed">

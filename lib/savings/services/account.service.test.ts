@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from "vitest"
+import { beforeEach, describe, expect, it, vi } from "vitest"
 import {
   createSavingsAccount,
   deleteSavingsAccount,
@@ -25,6 +25,7 @@ describe("account.service", () => {
   }
 
   beforeEach(() => {
+    vi.clearAllMocks()
     ensureModel(prisma, "savingsAccount").findMany!.mockResolvedValue([accountRow])
     ensureModel(prisma, "savingsAccount").aggregate!.mockResolvedValue({ _max: { position: 0 } })
     ensureModel(prisma, "savingsAccount").findFirst!.mockResolvedValue(accountRow)
@@ -79,5 +80,27 @@ describe("account.service", () => {
   it("throws when deleting missing account", async () => {
     ensureModel(prisma, "savingsAccount").findFirst!.mockResolvedValue(null)
     await expect(deleteSavingsAccount(prisma, userId, "missing")).rejects.toThrow("Not found")
+  })
+
+  it("creates account without opening movement when balance is zero", async () => {
+    await createSavingsAccount(prisma, userId, { name: "Empty", balance: 0 })
+    expect(prisma.savingsAccountMovement.create).not.toHaveBeenCalled()
+  })
+
+  it("updates notes without changing name", async () => {
+    await updateSavingsAccount(prisma, userId, "acct-1", { notes: "Rainy day" })
+    expect(prisma.savingsAccount.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ notes: "Rainy day" }),
+      }),
+    )
+  })
+
+  it("assigns next position when aggregate max is null", async () => {
+    ensureModel(prisma, "savingsAccount").aggregate!.mockResolvedValue({ _max: { position: null } })
+    await createSavingsAccount(prisma, userId, { name: "First" })
+    expect(prisma.savingsAccount.create).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ position: 1 }) }),
+    )
   })
 })

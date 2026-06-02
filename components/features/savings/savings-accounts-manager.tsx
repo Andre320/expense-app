@@ -3,6 +3,8 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import * as React from "react"
 import { toast } from "sonner"
+import { EmptyState } from "@/components/patterns/empty-state"
+import { QueryErrorPanel } from "@/components/patterns/query-error-panel"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -12,6 +14,7 @@ import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group"
 import { formatMoneyBase } from "@/lib/shared/format-money"
 import { amountToReportingBase, roundMoney } from "@/lib/shared/currency"
 import { REPORTING_CURRENCY } from "@/lib/shared/app-currency"
+import { fetchJson, parseApiError } from "@/lib/shared/api-error"
 import { AccountCard } from "@/components/features/savings/savings-account-card"
 
 export type SavingsAccountDto = {
@@ -32,9 +35,7 @@ export type SavingsMovementDto = {
 }
 
 async function fetchAccounts(): Promise<SavingsAccountDto[]> {
-  const res = await fetch("/api/savings-accounts")
-  if (!res.ok) throw new Error("accounts")
-  return res.json()
+  return fetchJson("/api/savings-accounts")
 }
 
 export function SavingsAccountsManager({
@@ -45,7 +46,7 @@ export function SavingsAccountsManager({
   crcPerUsd?: number
 }) {
   const qc = useQueryClient()
-  const { data, isPending } = useQuery({
+  const { data, isPending, isError, error, refetch } = useQuery({
     queryKey: ["savings-accounts"],
     queryFn: fetchAccounts,
   })
@@ -66,7 +67,7 @@ export function SavingsAccountsManager({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       })
-      if (!res.ok) throw new Error("fail")
+      if (!res.ok) throw await parseApiError(res)
       return res.json()
     },
     onSuccess: () => {
@@ -77,7 +78,7 @@ export function SavingsAccountsManager({
       qc.invalidateQueries({ queryKey: ["savings-accounts"] })
       qc.invalidateQueries({ queryKey: ["analytics"] })
     },
-    onError: () => toast.error("Could not add account"),
+    onError: (e: Error) => toast.error(e.message),
   })
 
   const totalReporting = React.useMemo(
@@ -170,6 +171,12 @@ export function SavingsAccountsManager({
           <Skeleton className="h-48 w-full" />
           <Skeleton className="h-48 w-full" />
         </div>
+      ) : isError ? (
+        <QueryErrorPanel
+          title="Could not load savings accounts"
+          message={error?.message ?? "Accounts are unavailable."}
+          onRetry={() => void refetch()}
+        />
       ) : data && data.length > 0 ? (
         <div className="grid gap-4 md:grid-cols-2">
           {data.map((a) => (
@@ -177,9 +184,7 @@ export function SavingsAccountsManager({
           ))}
         </div>
       ) : (
-        <p className="text-muted-foreground text-sm">
-          No savings accounts yet. Add one to track real balances.
-        </p>
+        <EmptyState message="No savings accounts yet. Add one to track real balances." />
       )}
     </div>
   )

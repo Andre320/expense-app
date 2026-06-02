@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server"
 import { apiRequireUser, notFoundResponse } from "@/lib/auth/api-context"
 import { prisma } from "@/lib/db/client"
+import { errorResponse, validationErrorResponse } from "@/lib/shared/api-error"
 import { transactionUpdateZ } from "@/lib/shared/validators"
 import {
   deleteTransaction,
@@ -17,7 +18,7 @@ export async function PATCH(req: Request, ctx: Ctx) {
   const json = await req.json().catch(() => null)
   const parsed = transactionUpdateZ.safeParse(json)
   if (!parsed.success) {
-    return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })
+    return validationErrorResponse(parsed.error)
   }
 
   try {
@@ -26,7 +27,7 @@ export async function PATCH(req: Request, ctx: Ctx) {
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Update failed"
     if (msg === "Not found") return notFoundResponse()
-    return NextResponse.json({ error: msg }, { status: 400 })
+    return errorResponse(msg, 400)
   }
 }
 

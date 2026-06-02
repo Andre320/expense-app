@@ -6,42 +6,14 @@ import { serializeRsuPlan, serializeRsuVest } from "@/lib/shared/serialize"
 import { getStockQuote } from "@/lib/stocks/services/quote.service"
 import { numFromDecimal } from "@/lib/shared/utils"
 import { type rsuPlanCreateZ } from "@/lib/shared/validators"
+import {
+  findOwnedPlan,
+  parseGrantDate,
+  vestSummaryInput,
+} from "@/lib/rsu/services/plan.service.helpers"
 import type { z } from "zod"
 
 type PlanCreate = z.infer<typeof rsuPlanCreateZ>
-
-function parseGrantDate(value: string): Date {
-  const d = new Date(value)
-  if (Number.isNaN(d.getTime())) throw new Error("Invalid grantDate")
-  return d
-}
-
-function vestSummaryInput(v: {
-  sequence: number
-  scheduledDate: Date
-  shares: { toString(): string }
-  status: string
-  netShares: { toString(): string } | null
-  cashBonusUsd: { toString(): string } | null
-}) {
-  return {
-    sequence: v.sequence,
-    scheduledDate: v.scheduledDate,
-    shares: numFromDecimal(v.shares),
-    status: v.status as "PENDING" | "RECEIVED",
-    netShares: v.netShares != null ? numFromDecimal(v.netShares) : null,
-    cashBonusUsd: v.cashBonusUsd != null ? numFromDecimal(v.cashBonusUsd) : null,
-  }
-}
-
-async function findOwnedPlan(prisma: PrismaClient, userId: string, id: string) {
-  const plan = await prisma.rsuPlan.findFirst({
-    where: { id, userId },
-    include: { vests: { orderBy: { sequence: "asc" } } },
-  })
-  if (!plan) throw new Error("Not found")
-  return plan
-}
 
 export async function listRsuPlanSummaries(prisma: PrismaClient, userId: string) {
   const plans = await prisma.rsuPlan.findMany({

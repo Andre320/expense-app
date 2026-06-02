@@ -5,6 +5,7 @@ import {
   applySavingsAccountMovement,
   listSavingsAccountMovements,
 } from "@/lib/savings/services/movement.service"
+import { errorResponse, validationErrorResponse } from "@/lib/shared/api-error"
 import { savingsMovementCreateZ } from "@/lib/shared/validators"
 
 type Ctx = { params: Promise<{ id: string }> }
@@ -29,7 +30,7 @@ export async function POST(req: Request, ctx: Ctx) {
   const json = await req.json().catch(() => null)
   const parsed = savingsMovementCreateZ.safeParse(json)
   if (!parsed.success) {
-    return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })
+    return validationErrorResponse(parsed.error)
   }
   try {
     const result = await applySavingsAccountMovement(prisma, auth.userId, id, parsed.data)
@@ -37,6 +38,6 @@ export async function POST(req: Request, ctx: Ctx) {
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Movement failed"
     const status = msg.includes("Insufficient") ? 400 : 404
-    return NextResponse.json({ error: msg }, { status })
+    return errorResponse(msg, status)
   }
 }

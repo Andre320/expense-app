@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from "vitest"
+import { beforeEach, describe, expect, it, vi } from "vitest"
 import {
   createKnownStore,
   deleteKnownStore,
@@ -25,6 +25,7 @@ describe("known-store.service", () => {
   }
 
   beforeEach(() => {
+    vi.clearAllMocks()
     ensureModel(prisma, "knownStore").findMany!.mockResolvedValue([storeRow])
     ensureModel(prisma, "category").findFirst!.mockResolvedValue({
       id: "cat-1",
@@ -127,5 +128,41 @@ describe("known-store.service", () => {
   it("throws when deleting missing store", async () => {
     ensureModel(prisma, "knownStore").findFirst!.mockResolvedValue(null)
     await expect(deleteKnownStore(prisma, userId, "missing")).rejects.toThrow("Not found")
+  })
+
+  it("updates display name only without pattern or category checks", async () => {
+    const updated = await updateKnownStore(prisma, userId, "store-1", {
+      displayName: "Renamed only",
+    })
+    expect(updated.displayName).toBe("Updated")
+    expect(prisma.category.findFirst).not.toHaveBeenCalled()
+  })
+
+  it("updates pattern without touching category when only pattern changes", async () => {
+    ensureModel(prisma, "knownStore").findMany!.mockResolvedValue([])
+    await updateKnownStore(prisma, userId, "store-1", { pattern: "NEW-PATTERN" })
+    expect(prisma.knownStore.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ pattern: "NEW-PATTERN" }),
+      }),
+    )
+  })
+
+  it("updates category when categoryId provided", async () => {
+    await updateKnownStore(prisma, userId, "store-1", { categoryId: "cat-2" })
+    expect(prisma.category.findFirst).toHaveBeenCalled()
+  })
+
+  it("assigns position when no prior stores exist", async () => {
+    ensureModel(prisma, "knownStore").findMany!.mockResolvedValue([])
+    ensureModel(prisma, "knownStore").aggregate!.mockResolvedValue({ _max: { position: null } })
+    await createKnownStore(prisma, userId, {
+      pattern: "NEW",
+      displayName: "New",
+      categoryId: "cat-1",
+    })
+    expect(prisma.knownStore.create).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ position: 1 }) }),
+    )
   })
 })

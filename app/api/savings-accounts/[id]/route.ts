@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { apiRequireUser, notFoundResponse } from "@/lib/auth/api-context"
 import { prisma } from "@/lib/db/client"
 import { deleteSavingsAccount, updateSavingsAccount } from "@/lib/savings/services/account.service"
+import { validationErrorResponse } from "@/lib/shared/api-error"
 import { savingsAccountUpdateZ } from "@/lib/shared/validators"
 
 type Ctx = { params: Promise<{ id: string }> }
@@ -14,7 +15,7 @@ export async function PATCH(req: Request, ctx: Ctx) {
   const json = await req.json().catch(() => null)
   const parsed = savingsAccountUpdateZ.safeParse(json)
   if (!parsed.success) {
-    return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })
+    return validationErrorResponse(parsed.error)
   }
   try {
     const updated = await updateSavingsAccount(prisma, auth.userId, id, parsed.data)

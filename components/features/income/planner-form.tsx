@@ -1,16 +1,19 @@
 "use client"
 
 import Link from "next/link"
-import { InsetPanel } from "@/components/patterns/inset-panel"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import type { CrPayPeriod } from "@/lib/income/tax-calculator"
 import type { UseMutationResult } from "@tanstack/react-query"
-import { fmtCrc } from "./use-income-planner"
 import type { computeCrSalary } from "@/lib/income/tax-calculator"
-import { BreakdownRow, CurrencyToggle } from "./planner-form.parts"
+import {
+  CurrencyToggle,
+  PeriodToggle,
+  SalaryBreakdownPanel,
+  VoluntaryDeductionsFields,
+} from "./planner-form.parts"
 
 type Breakdown = ReturnType<typeof computeCrSalary>
 
@@ -84,47 +87,14 @@ export function PlannerForm({
           </p>
         )}
 
-        <InsetPanel className="space-y-3 p-4">
-          <p className="text-sm font-medium">Optional payroll deductions (% of gross)</p>
-          <div className="grid gap-3 sm:grid-cols-3">
-            <div className="space-y-1.5">
-              <Label htmlFor="solidaristaPct">Solidarista</Label>
-              <Input
-                id="solidaristaPct"
-                type="number"
-                step="0.01"
-                min="0"
-                max="100"
-                value={solidaristaPct}
-                onChange={(e) => onSolidaristaPctChange(e.target.value)}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="pensionPct">Pensión compl.</Label>
-              <Input
-                id="pensionPct"
-                type="number"
-                step="0.01"
-                min="0"
-                max="100"
-                value={pensionPct}
-                onChange={(e) => onPensionPctChange(e.target.value)}
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="esppPct">ESPP / otro</Label>
-              <Input
-                id="esppPct"
-                type="number"
-                step="0.01"
-                min="0"
-                max="100"
-                value={esppPct}
-                onChange={(e) => onEsppPctChange(e.target.value)}
-              />
-            </div>
-          </div>
-        </InsetPanel>
+        <VoluntaryDeductionsFields
+          solidaristaPct={solidaristaPct}
+          onSolidaristaPctChange={onSolidaristaPctChange}
+          pensionPct={pensionPct}
+          onPensionPctChange={onPensionPctChange}
+          esppPct={esppPct}
+          onEsppPctChange={onEsppPctChange}
+        />
 
         <div className="space-y-2">
           <Label htmlFor="gross">
@@ -139,30 +109,7 @@ export function PlannerForm({
           />
         </div>
 
-        <InsetPanel className="p-4 text-sm">
-          <div className="grid gap-2 tabular-nums">
-            <BreakdownRow label="Gross (monthly, CRC)" value={fmtCrc(breakdown.grossMonthlyCrc)} />
-            <BreakdownRow label="CCSS (monthly)" value={fmtCrc(breakdown.ccssMonthlyCrc)} />
-            <BreakdownRow label="Income tax (monthly)" value={fmtCrc(breakdown.rentaMonthlyCrc)} />
-            <BreakdownRow
-              label="Asoc. solidarista"
-              value={fmtCrc(breakdown.solidaristaMonthlyCrc)}
-              hint={`${voluntaryPct.solidaristaPct}% of gross`}
-            />
-            <BreakdownRow
-              label="Pensión complementaria"
-              value={fmtCrc(breakdown.pensionComplementariaMonthlyCrc)}
-              hint={`${voluntaryPct.pensionComplementariaPct}% of gross`}
-            />
-            <BreakdownRow
-              label="ESPP / otro %"
-              value={fmtCrc(breakdown.esppMonthlyCrc)}
-              hint={`${voluntaryPct.esppPct}% of gross`}
-            />
-            <BreakdownRow label="Net (monthly)" value={fmtCrc(breakdown.netMonthlyCrc)} strong />
-            <BreakdownRow label="Net (per quincena)" value={fmtCrc(breakdown.netBiweeklyCrc)} />
-          </div>
-        </InsetPanel>
+        <SalaryBreakdownPanel breakdown={breakdown} voluntaryPct={voluntaryPct} />
 
         <div className="flex flex-wrap items-center gap-3">
           <Button
@@ -178,34 +125,5 @@ export function PlannerForm({
         </div>
       </CardContent>
     </Card>
-  )
-}
-
-function PeriodToggle({
-  period,
-  onPeriodChange,
-}: {
-  period: CrPayPeriod
-  onPeriodChange: (period: CrPayPeriod) => void
-}) {
-  return (
-    <div className="flex flex-wrap gap-2">
-      <Button
-        type="button"
-        size="sm"
-        variant={period === "MONTHLY" ? "default" : "outline"}
-        onClick={() => onPeriodChange("MONTHLY")}
-      >
-        Monthly
-      </Button>
-      <Button
-        type="button"
-        size="sm"
-        variant={period === "BIWEEKLY" ? "default" : "outline"}
-        onClick={() => onPeriodChange("BIWEEKLY")}
-      >
-        Bi-weekly (quincenal)
-      </Button>
-    </div>
   )
 }

@@ -3,6 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import * as React from "react"
 import { toast } from "sonner"
+import { fetchJson, parseApiError } from "@/lib/shared/api-error"
 
 export type SavingsGoalDto = {
   id: string
@@ -23,15 +24,11 @@ export type SavingsMovementDto = {
 }
 
 export async function fetchGoals(): Promise<SavingsGoalDto[]> {
-  const res = await fetch("/api/savings")
-  if (!res.ok) throw new Error("goals")
-  return res.json()
+  return fetchJson("/api/savings")
 }
 
 export async function fetchGoalMovements(goalId: string): Promise<SavingsMovementDto[]> {
-  const res = await fetch(`/api/savings/${goalId}/movements`)
-  if (!res.ok) throw new Error("movements")
-  return res.json()
+  return fetchJson(`/api/savings/${goalId}/movements`)
 }
 
 export function useSavingsGoalsQuery() {
@@ -64,7 +61,7 @@ export function useCreateGoalForm() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       })
-      if (!res.ok) throw new Error("fail")
+      if (!res.ok) throw await parseApiError(res)
       return res.json()
     },
     onSuccess: () => {
@@ -77,7 +74,7 @@ export function useCreateGoalForm() {
       qc.invalidateQueries({ queryKey: ["savings"] })
       qc.invalidateQueries({ queryKey: ["analytics"] })
     },
-    onError: () => toast.error("Could not create goal"),
+    onError: (e: Error) => toast.error(e.message),
   })
 
   return {
@@ -111,7 +108,7 @@ export function useGoalCard(goal: SavingsGoalDto) {
   const [amount, setAmount] = React.useState("")
   const [note, setNote] = React.useState("")
 
-  const { data: movements, isPending: movPending } = useQuery({
+  const movementsQuery = useQuery({
     queryKey: ["savings-goal-movements", goal.id],
     queryFn: () => fetchGoalMovements(goal.id),
     enabled: expanded,
@@ -120,7 +117,7 @@ export function useGoalCard(goal: SavingsGoalDto) {
   const movementMut = useMutation({
     mutationFn: async (kind: "DEPOSIT" | "WITHDRAWAL") => {
       const v = Number(amount)
-      if (!Number.isFinite(v) || v <= 0) throw new Error("Invalid amount")
+      if (!Number.isFinite(v) || v <= 0) throw new Error("Enter a positive amount")
 
       const res = await fetch(`/api/savings/${goal.id}/movements`, {
         method: "POST",
@@ -131,10 +128,7 @@ export function useGoalCard(goal: SavingsGoalDto) {
           description: note.trim(),
         }),
       })
-      if (!res.ok) {
-        const err = await res.json().catch(() => ({}))
-        throw new Error((err as { error?: string }).error ?? "fail")
-      }
+      if (!res.ok) throw await parseApiError(res)
       return res.json()
     },
     onSuccess: () => {
@@ -145,7 +139,7 @@ export function useGoalCard(goal: SavingsGoalDto) {
       qc.invalidateQueries({ queryKey: ["savings-goal-movements", goal.id] })
       qc.invalidateQueries({ queryKey: ["analytics"] })
     },
-    onError: (e: Error) => toast.error(e.message || "Movement failed"),
+    onError: (e: Error) => toast.error(e.message),
   })
 
   const patchMut = useMutation({
@@ -155,7 +149,7 @@ export function useGoalCard(goal: SavingsGoalDto) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(patch),
       })
-      if (!res.ok) throw new Error("fail")
+      if (!res.ok) throw await parseApiError(res)
       return res.json()
     },
     onSuccess: () => {
@@ -163,20 +157,20 @@ export function useGoalCard(goal: SavingsGoalDto) {
       qc.invalidateQueries({ queryKey: ["savings"] })
       qc.invalidateQueries({ queryKey: ["analytics"] })
     },
-    onError: () => toast.error("Update failed"),
+    onError: (e: Error) => toast.error(e.message),
   })
 
   const deleteMut = useMutation({
     mutationFn: async () => {
       const res = await fetch(`/api/savings/${goal.id}`, { method: "DELETE" })
-      if (!res.ok) throw new Error("fail")
+      if (!res.ok) throw await parseApiError(res)
     },
     onSuccess: () => {
       toast.success("Goal removed")
       qc.invalidateQueries({ queryKey: ["savings"] })
       qc.invalidateQueries({ queryKey: ["analytics"] })
     },
-    onError: () => toast.error("Delete failed"),
+    onError: (e: Error) => toast.error(e.message),
   })
 
   return {
@@ -186,8 +180,11 @@ export function useGoalCard(goal: SavingsGoalDto) {
     setAmount,
     note,
     setNote,
-    movements,
-    movPending,
+    movements: movementsQuery.data,
+    movPending: movementsQuery.isPending,
+    movIsError: movementsQuery.isError,
+    movError: movementsQuery.error,
+    refetchMovements: movementsQuery.refetch,
     movementMut,
     patchMut,
     deleteMut,

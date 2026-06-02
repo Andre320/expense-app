@@ -28,6 +28,16 @@ describe("computeIncomeProfileBreakdown", () => {
     expect(computeIncomeProfileBreakdown({ ...baseSettings, crSalaryGross: 0 })).toBeNull()
   })
 
+  it("parses biweekly USD settings into profile breakdown", () => {
+    const result = computeIncomeProfileBreakdown({
+      ...baseSettings,
+      crPayPeriod: "BIWEEKLY",
+      crSalaryCurrency: "USD",
+      crSalaryGross: 1000,
+    })
+    expect(result!.grossMonthlyCrc).toBe(1_010_000)
+  })
+
   it("computes CRC breakdown for monthly gross", () => {
     const result = computeIncomeProfileBreakdown(baseSettings)
     expect(result).not.toBeNull()
@@ -64,6 +74,25 @@ describe("computeExpectedNetForMonth", () => {
     const expected = computeExpectedNetForMonth(baseSettings, [sampleBonus], month)
     const fromHelper = computeExpectedMonthlyIncomeBase(baseSettings, [sampleBonus])
     expect(fromHelper).toBe(expected.expectedNetCrc)
+  })
+
+  it("computes profile for biweekly USD gross", () => {
+    const result = computeIncomeProfileBreakdown({
+      ...baseSettings,
+      crSalaryGross: 2000,
+      crSalaryCurrency: "USD",
+      crPayPeriod: "BIWEEKLY",
+    })
+    expect(result!.grossMonthlyCrc).toBe(2_020_000)
+  })
+
+  it("parses bonus months JSON string", () => {
+    const withBonus = computeExpectedNetForMonth(
+      baseSettings,
+      [{ ...sampleBonus, months: "[6,7]" }],
+      6,
+    )
+    expect(withBonus.activeBonuses.length).toBeGreaterThan(0)
   })
 
   it("computeLiveExpectedNetForCurrentMonth uses live salary override", () => {

@@ -9,7 +9,7 @@ const eslintConfig = defineConfig([
   eslintConfigPrettier,
   {
     rules: {
-      "max-lines": ["warn", { max: 250, skipBlankLines: true, skipComments: true }],
+      "max-lines": ["warn", { max: 200, skipBlankLines: true, skipComments: true }],
       complexity: ["warn", 15],
       "@typescript-eslint/consistent-type-imports": [
         "error",

@@ -16,7 +16,7 @@ export function RsuPlansManager({
   chartTicker?: string
   showForecast?: boolean
 }) {
-  const { data, isPending } = useRsuPlansQuery()
+  const { data, isPending, isError, error, refetch } = useRsuPlansQuery()
 
   return (
     <div className="space-y-6">
@@ -24,6 +24,9 @@ export function RsuPlansManager({
       <PlanList
         items={data}
         isPending={isPending}
+        isError={isError}
+        errorMessage={error?.message}
+        onRetry={() => void refetch()}
         chartTicker={chartTicker}
         showForecast={showForecast}
       />

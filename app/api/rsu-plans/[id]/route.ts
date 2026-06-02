@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { apiRequireUser, notFoundResponse } from "@/lib/auth/api-context"
 import { prisma } from "@/lib/db/client"
 import { deleteRsuPlan, getRsuPlanDetail, updateRsuPlan } from "@/lib/rsu/services/plan.service"
+import { validationErrorResponse } from "@/lib/shared/api-error"
 import { rsuPlanUpdateZ } from "@/lib/shared/validators"
 
 type Ctx = { params: Promise<{ id: string }> }
@@ -26,7 +27,7 @@ export async function PATCH(req: Request, ctx: Ctx) {
   const json = await req.json().catch(() => null)
   const parsed = rsuPlanUpdateZ.safeParse(json)
   if (!parsed.success) {
-    return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })
+    return validationErrorResponse(parsed.error)
   }
   try {
     return NextResponse.json(await updateRsuPlan(prisma, auth.userId, id, parsed.data))

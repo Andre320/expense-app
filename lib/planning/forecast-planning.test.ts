@@ -57,6 +57,16 @@ describe("savingsGoalMilestones", () => {
     priorityOrder: over.priorityOrder ?? 0,
   })
 
+  it("breaks priority ties by goal name", () => {
+    const goals = [
+      g({ id: "b", name: "Bravo", priorityOrder: 1, targetAmount: 100, currentAmount: 0 }),
+      g({ id: "a", name: "Alpha", priorityOrder: 1, targetAmount: 100, currentAmount: 0 }),
+    ]
+    const m = savingsGoalMilestones(goals, 50)
+    expect(m[0]!.goalId).toBe("a")
+    expect(m[1]!.goalId).toBe("b")
+  })
+
   it("waterfalls surplus across two goals by priority", () => {
     const goals = [
       g({ id: "b", name: "B", priorityOrder: 2, targetAmount: 600, currentAmount: 0 }),

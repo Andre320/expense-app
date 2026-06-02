@@ -5,6 +5,7 @@ import {
   buildBacImportPreview,
   type BacImportPreviewRow,
 } from "@/lib/import/services/bac-import.service"
+import { errorResponse } from "@/lib/shared/api-error"
 
 export const runtime = "nodejs"
 
@@ -17,7 +18,7 @@ export async function POST(req: Request) {
   const form = await req.formData().catch(() => null)
   const file = form?.get("file")
   if (!file || !(file instanceof File)) {
-    return NextResponse.json({ error: "Missing file" }, { status: 400 })
+    return errorResponse("Missing file", 400)
   }
   const buf = Buffer.from(await file.arrayBuffer())
   try {
@@ -36,6 +37,6 @@ export async function POST(req: Request) {
     })
   } catch (e) {
     const message = e instanceof Error ? e.message : "Parse failed"
-    return NextResponse.json({ error: message }, { status: 400 })
+    return errorResponse(message, 400)
   }
 }

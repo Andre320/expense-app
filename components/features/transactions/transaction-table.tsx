@@ -2,6 +2,8 @@
 
 import { getCoreRowModel, useReactTable, type SortingState } from "@tanstack/react-table"
 import * as React from "react"
+import { EmptyState } from "@/components/patterns/empty-state"
+import { QueryErrorPanel } from "@/components/patterns/query-error-panel"
 import { SELECT_NONE } from "@/components/select-field"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -15,6 +17,9 @@ import { TransactionPagination, TransactionTableBody } from "./transaction-table
 type TransactionTableProps = {
   data: { items: Tx[]; total: number; page: number; pageSize: number } | undefined
   isPending: boolean
+  isError?: boolean
+  errorMessage?: string
+  onRetry?: () => void
   sorting: SortingState
   onSortingChange: React.Dispatch<React.SetStateAction<SortingState>>
   kindFilter: string
@@ -29,6 +34,9 @@ type TransactionTableProps = {
 export function TransactionTable({
   data,
   isPending,
+  isError,
+  errorMessage,
+  onRetry,
   sorting,
   onSortingChange,
   kindFilter,
@@ -87,6 +95,14 @@ export function TransactionTable({
             <Skeleton className="h-8 w-full" />
             <Skeleton className="h-8 w-full" />
           </div>
+        ) : isError ? (
+          <QueryErrorPanel
+            title="Could not load ledger"
+            message={errorMessage ?? "Entries are unavailable."}
+            onRetry={onRetry}
+          />
+        ) : !data?.items.length ? (
+          <EmptyState message="No entries yet. Add one above or import from Activity." />
         ) : (
           <>
             <TransactionTableBody table={table} />

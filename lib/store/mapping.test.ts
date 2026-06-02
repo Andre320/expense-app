@@ -55,6 +55,27 @@ describe("matchStoreMapping", () => {
     expect(r.displayName).toBe("Office")
   })
 
+  it("skips rules whose pattern is only whitespace", () => {
+    const rules: StoreMappingRule[] = [
+      rule({
+        id: "ws",
+        pattern: "   ",
+        displayName: "Whitespace",
+        categoryId: "x",
+        position: 0,
+      }),
+      rule({
+        id: "ok",
+        pattern: "SHOP",
+        displayName: "Shop",
+        categoryId: "c1",
+        position: 1,
+      }),
+    ]
+    const r = matchStoreMapping("CITY SHOP", rules, fb)
+    expect(r.ruleId).toBe("ok")
+  })
+
   it("skips empty or whitespace-only patterns", () => {
     const rules: StoreMappingRule[] = [
       rule({
@@ -117,6 +138,20 @@ describe("matchStoreMapping", () => {
     const r = matchStoreMapping("bbaa", rules, fb)
     expect(r.matchedPattern).toBe("aa")
     expect(r.ruleId).toBe("aa")
+  })
+
+  it("trims display names on match", () => {
+    const rules: StoreMappingRule[] = [
+      rule({
+        id: "1",
+        pattern: "acme",
+        displayName: "  Trimmed Name  ",
+        categoryId: "c1",
+        position: 0,
+      }),
+    ]
+    const r = matchStoreMapping("payment acme store", rules, fb)
+    expect(r.displayName).toBe("Trimmed Name")
   })
 
   it("returns fallback when nothing matches", () => {

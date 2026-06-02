@@ -4,8 +4,10 @@ import Link from "next/link"
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import * as React from "react"
 import { toast } from "sonner"
+import { EmptyState } from "@/components/patterns/empty-state"
 import { InsetPanel } from "@/components/patterns/inset-panel"
 import { PageIntro } from "@/components/patterns/page-intro"
+import { QueryErrorPanel } from "@/components/patterns/query-error-panel"
 import { SelectField } from "@/components/select-field"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -16,16 +18,21 @@ import {
   KIND_OPTIONS,
   type Category,
 } from "@/components/features/categories/category-table"
+import { fetchJson, parseApiError } from "@/lib/shared/api-error"
 
 async function fetchCategories(): Promise<Category[]> {
-  const res = await fetch("/api/categories")
-  if (!res.ok) throw new Error("categories")
-  return res.json()
+  return fetchJson("/api/categories")
 }
 
 export function CategoriesManager({ embedded }: { embedded?: boolean }) {
   const qc = useQueryClient()
-  const { data: categories, isPending } = useQuery({
+  const {
+    data: categories,
+    isPending,
+    isError,
+    error,
+    refetch,
+  } = useQuery({
     queryKey: ["categories"],
     queryFn: fetchCategories,
   })
@@ -45,10 +52,7 @@ export function CategoriesManager({ embedded }: { embedded?: boolean }) {
           color: newColor || undefined,
         }),
       })
-      if (!res.ok) {
-        const j = await res.json().catch(() => ({}))
-        throw new Error(j.error ?? "Could not create category")
-      }
+      if (!res.ok) throw await parseApiError(res)
       return res.json()
     },
     onSuccess: () => {
@@ -70,10 +74,7 @@ export function CategoriesManager({ embedded }: { embedded?: boolean }) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(p.body),
       })
-      if (!res.ok) {
-        const j = await res.json().catch(() => ({}))
-        throw new Error(j.error ?? "Update failed")
-      }
+      if (!res.ok) throw await parseApiError(res)
       return res.json()
     },
     onSuccess: () => {
@@ -85,10 +86,7 @@ export function CategoriesManager({ embedded }: { embedded?: boolean }) {
   const deleteMut = useMutation({
     mutationFn: async (id: string) => {
       const res = await fetch(`/api/categories/${id}`, { method: "DELETE" })
-      if (!res.ok) {
-        const j = await res.json().catch(() => ({}))
-        throw new Error(j.error ?? "Delete failed")
-      }
+      if (!res.ok) throw await parseApiError(res)
     },
     onSuccess: () => {
       toast.success("Category removed")
@@ -179,6 +177,14 @@ export function CategoriesManager({ embedded }: { embedded?: boolean }) {
 
       {isPending ? (
         <p className="text-muted-foreground text-sm">Loading…</p>
+      ) : isError ? (
+        <QueryErrorPanel
+          title="Could not load categories"
+          message={error?.message ?? "Categories are unavailable."}
+          onRetry={() => void refetch()}
+        />
+      ) : !categories?.length ? (
+        <EmptyState message="No categories yet. Create one above." />
       ) : (
         <div className="grid gap-8 lg:grid-cols-2">
           <CategoryTable title="Income" rows={income} patchMut={patchMut} deleteMut={deleteMut} />

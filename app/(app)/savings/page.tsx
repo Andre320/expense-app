@@ -1,65 +1,42 @@
 "use client"
 
 import Link from "next/link"
-import { useQuery } from "@tanstack/react-query"
-import { ForecastMilestones } from "@/components/forecast-milestones"
-import { MONTH_LABELS } from "@/components/features/income/income-bonuses-manager"
-import { MetricStat } from "@/components/patterns/metric-stat"
 import { PageIntro } from "@/components/patterns/page-intro"
+import { QueryErrorPanel } from "@/components/patterns/query-error-panel"
 import { SavingsAccountsManager } from "@/components/features/savings/savings-accounts-manager"
+import { SavingsFundingTimeline } from "@/components/features/savings/savings-funding-timeline"
 import { SavingsGoalsManager } from "@/components/features/savings/savings-goals-manager"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import {
-  goalsForForecast,
-  monthlySurplusForForecast,
-  savingsGoalMilestones,
-  type SavingsGoalForecastInput,
-} from "@/lib/planning/forecast-planning"
-import { formatMoneyBase } from "@/lib/shared/format-money"
-import { REPORTING_CURRENCY } from "@/lib/shared/app-currency"
-
-async function fetchSummary() {
-  const res = await fetch("/api/analytics/summary")
-  if (!res.ok) throw new Error("summary")
-  return res.json() as Promise<{
-    burnRate3Mo: number
-    expectedMonthlyIncomeBase: number
-    reportingCurrency: string
-    savingsAccountsTotal: number
-    forecastCalendarMonth: number
-    activeBonusesThisMonth: { name: string; grossAmountCrc: number }[]
-    settings: { crCrcPerUsd: number }
-  }>
-}
-
-async function fetchGoals(): Promise<SavingsGoalForecastInput[]> {
-  const res = await fetch("/api/savings")
-  if (!res.ok) throw new Error("goals")
-  return res.json()
-}
+import { useSavingsPageData } from "@/components/features/savings/use-savings-page-data"
 
 export default function SavingsPage() {
-  const { data: summary } = useQuery({
-    queryKey: ["analytics", "summary"],
-    queryFn: fetchSummary,
-  })
-  const { data: goals } = useQuery({
-    queryKey: ["savings"],
-    queryFn: fetchGoals,
-  })
-
-  const expectedIncome = summary?.expectedMonthlyIncomeBase ?? 0
-  const burn = summary?.burnRate3Mo ?? 0
-  const surplus = monthlySurplusForForecast(
-    Number.isFinite(expectedIncome) ? expectedIncome : 0,
+  const {
+    summaryQuery,
+    goalsQuery,
+    expectedIncome,
     burn,
-  )
-  const crcPerUsd = summary?.settings.crCrcPerUsd ?? 505
-  const milestones =
-    goals && goals.length ? savingsGoalMilestones(goalsForForecast(goals, crcPerUsd), surplus) : []
-  const bc = summary?.reportingCurrency ?? REPORTING_CURRENCY
-  const monthLabel =
-    summary?.forecastCalendarMonth != null ? MONTH_LABELS[summary.forecastCalendarMonth - 1] : null
+    surplus,
+    milestones,
+    baseCurrency,
+    monthLabel,
+    crcPerUsd,
+  } = useSavingsPageData()
+
+  if (summaryQuery.isError) {
+    return (
+      <div className="space-y-8">
+        <PageIntro
+          eyebrow="Financial planning"
+          title="Savings"
+          description="Accounts, goals, and funding timeline."
+        />
+        <QueryErrorPanel
+          title="Could not load savings forecast"
+          message={summaryQuery.error?.message ?? "Analytics are unavailable."}
+          onRetry={() => void summaryQuery.refetch()}
+        />
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-10">
@@ -78,50 +55,29 @@ export default function SavingsPage() {
         }
       />
 
-      <SavingsAccountsManager reportingCurrency={bc} crcPerUsd={crcPerUsd} />
+      <SavingsAccountsManager reportingCurrency={baseCurrency} crcPerUsd={crcPerUsd} />
 
       <div className="grid gap-10 xl:grid-cols-[1fr_minmax(280px,360px)]">
         <SavingsGoalsManager />
 
         <div className="space-y-6">
-          <Card className="border-border bg-muted/15">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-base">Funding timeline</CardTitle>
-              <CardDescription>
-                Based on surplus for {monthLabel ?? "this month"} (
-                {formatMoneyBase(expectedIncome, bc)} expected income − {formatMoneyBase(burn, bc)}{" "}
-                avg spend). USD goals are converted at {crcPerUsd.toLocaleString()} CRC/USD. Lower
-                priority number is funded first.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-2 gap-3 text-sm">
-                <MetricStat
-                  label="Monthly surplus"
-                  value={formatMoneyBase(surplus, bc)}
-                  valueClassName="text-lg font-semibold tabular-nums"
-                />
-                <MetricStat
-                  label="Avg expenses (3 mo)"
-                  value={formatMoneyBase(burn, bc)}
-                  valueClassName="text-lg font-semibold tabular-nums text-muted-foreground"
-                />
-              </div>
-              <ForecastMilestones
-                milestones={milestones}
-                monthlySurplusBase={surplus}
-                baseCurrency={bc}
-              />
-            </CardContent>
-          </Card>
-
-          <p className="text-muted-foreground text-xs leading-relaxed">
-            Surplus comes from your salary profile and fixed bonuses on{" "}
-            <Link href="/income" className="underline-offset-2 hover:underline">
-              Income
-            </Link>
-            . Actual cash when goals are funded still flows through Activity.
-          </p>
+          {goalsQuery.isError ? (
+            <QueryErrorPanel
+              title="Could not load goals"
+              message={goalsQuery.error?.message ?? "Goals are unavailable."}
+              onRetry={() => void goalsQuery.refetch()}
+            />
+          ) : (
+            <SavingsFundingTimeline
+              monthLabel={monthLabel ?? null}
+              expectedIncome={expectedIncome}
+              burn={burn}
+              surplus={surplus}
+              milestones={milestones}
+              baseCurrency={baseCurrency}
+              crcPerUsd={crcPerUsd}
+            />
+          )}
         </div>
       </div>
     </div>

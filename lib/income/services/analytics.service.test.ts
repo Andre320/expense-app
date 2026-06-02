@@ -76,6 +76,21 @@ describe("analytics.service", () => {
     expect(result.hasSalaryProfile).toBe(false)
   })
 
+  it("reports active bonuses for the current calendar month", async () => {
+    const month = new Date().getMonth() + 1
+    ensureModel(prisma, "incomeBonus").findMany!.mockResolvedValue([
+      {
+        name: "Holiday",
+        grossAmount: "100000",
+        grossCurrency: "CRC",
+        months: `[${month}]`,
+      },
+    ])
+    const result = await getAnalyticsSummary(prisma, userId)
+    expect(result.bonusGrossThisMonth).toBe(100_000)
+    expect(result.activeBonusesThisMonth[0]!.name).toBe("Holiday")
+  })
+
   it("ignores transactions outside the rolling 12-month window", async () => {
     ensureModel(prisma, "transaction").findMany!.mockImplementation(({ where }) => {
       if (where?.occurredAt) {

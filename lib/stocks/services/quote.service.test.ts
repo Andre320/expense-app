@@ -47,6 +47,25 @@ describe("priceFromAlpacaSnapshot", () => {
   it("returns null when no usable price", () => {
     expect(priceFromAlpacaSnapshot({})).toBeNull()
   })
+
+  it("skips zero trade price and falls back to daily bar", () => {
+    const result = priceFromAlpacaSnapshot({
+      latestTrade: { p: 0, t: "2026-01-01T00:00:00Z" },
+      dailyBar: { c: 10.5, t: "2026-01-02T00:00:00Z" },
+    })
+    expect(result).toEqual({ priceUsd: 10.5, asOf: "2026-01-02T00:00:00Z" })
+  })
+
+  it("synthesizes asOf when trade timestamp missing", () => {
+    const result = priceFromAlpacaSnapshot({ latestTrade: { p: 42 } })
+    expect(result!.priceUsd).toBe(42)
+    expect(result!.asOf).toMatch(/^\d{4}-/)
+  })
+
+  it("returns null for invalid bid/ask", () => {
+    expect(priceFromAlpacaSnapshot({ latestQuote: { bp: 0, ap: 100 } })).toBeNull()
+    expect(priceFromAlpacaSnapshot({ latestQuote: { ap: 100 } })).toBeNull()
+  })
 })
 
 describe("getStockQuote", () => {
@@ -81,6 +100,18 @@ describe("getStockQuote", () => {
     const result = await getStockQuote("SNOW")
     expect(result.available).toBe(false)
     expect(result.error).toContain("ALPACA_API_KEY_ID")
+  })
+
+  it("appends feed query param when ALPACA_DATA_FEED is set", async () => {
+    process.env.ALPACA_DATA_FEED = "sip"
+    fetchMock.mockResolvedValue({
+      ok: true,
+      json: async () => ({ latestTrade: { p: 1, t: "2026-01-01T00:00:00Z" } }),
+    })
+    await getStockQuote("FEED")
+    const url = String(fetchMock.mock.calls[0]![0])
+    expect(url).toContain("feed=sip")
+    delete process.env.ALPACA_DATA_FEED
   })
 
   it("returns quote on successful fetch", async () => {
@@ -132,11 +163,34 @@ describe("getStockQuote", () => {
     expect(result.error).toBe("No quote available for ticker")
   })
 
+  it("refetches after cache entry expires", async () => {
+    const now = 1_700_000_000_000
+    vi.spyOn(Date, "now").mockReturnValue(now)
+    fetchMock.mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        latestTrade: { p: 10, t: "2026-01-01T00:00:00Z" },
+      }),
+    })
+
+    await getStockQuote("EXPIRE")
+    vi.spyOn(Date, "now").mockReturnValue(now + 6 * 60 * 1000)
+    await getStockQuote("EXPIRE")
+    expect(fetchMock).toHaveBeenCalledTimes(2)
+    vi.restoreAllMocks()
+  })
+
   it("returns error when fetch throws", async () => {
     fetchMock.mockRejectedValue(new Error("network down"))
 
     const result = await getStockQuote("THROW")
     expect(result.available).toBe(false)
     expect(result.error).toBe("network down")
+  })
+
+  it("returns generic message when fetch throws non-Error", async () => {
+    fetchMock.mockRejectedValue("offline")
+    const result = await getStockQuote("THROW2")
+    expect(result.error).toBe("Quote fetch failed")
   })
 })

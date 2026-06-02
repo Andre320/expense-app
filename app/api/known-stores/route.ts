@@ -2,12 +2,18 @@ import { NextResponse } from "next/server"
 import { apiRequireUser } from "@/lib/auth/api-context"
 import { prisma } from "@/lib/db/client"
 import { createKnownStore, listKnownStores } from "@/lib/store/services/known-store.service"
+import { errorResponse, validationErrorResponse } from "@/lib/shared/api-error"
 import { knownStoreCreateZ } from "@/lib/shared/validators"
 
 export async function GET() {
   const ctx = await apiRequireUser()
   if (ctx.response) return ctx.response
-  return NextResponse.json(await listKnownStores(prisma, ctx.userId))
+  try {
+    return NextResponse.json(await listKnownStores(prisma, ctx.userId))
+  } catch (e) {
+    console.error("[GET /api/known-stores]", e)
+    return errorResponse("Could not load stores", 500)
+  }
 }
 
 export async function POST(req: Request) {
@@ -17,7 +23,7 @@ export async function POST(req: Request) {
   const json = await req.json().catch(() => null)
   const parsed = knownStoreCreateZ.safeParse(json)
   if (!parsed.success) {
-    return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })
+    return validationErrorResponse(parsed.error)
   }
 
   try {
@@ -26,8 +32,8 @@ export async function POST(req: Request) {
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Create failed"
     if (msg === "Category not found") {
-      return NextResponse.json({ error: msg }, { status: 400 })
+      return errorResponse(msg, 400)
     }
-    return NextResponse.json({ error: msg }, { status: 409 })
+    return errorResponse(msg, 409)
   }
 }

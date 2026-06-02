@@ -48,6 +48,18 @@ describe("income-bonus.service", () => {
     expect(rows[0]!.months).toEqual([12])
   })
 
+  it("uses position 1 when no prior bonuses exist", async () => {
+    ensureModel(prisma, "incomeBonus").aggregate!.mockResolvedValue({ _max: { position: null } })
+    await createIncomeBonus(prisma, userId, {
+      name: "First",
+      grossAmount: 1,
+      months: [1],
+    })
+    expect(prisma.incomeBonus.create).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ position: 1 }) }),
+    )
+  })
+
   it("creates bonus with next position", async () => {
     const created = await createIncomeBonus(prisma, userId, {
       name: "Q1",

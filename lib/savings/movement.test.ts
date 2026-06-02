@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest"
 import { amountToReportingBase, normalizeCurrencyCode } from "@/lib/shared/currency"
-import { applyMovementToBalance, movementDelta, movementKindLabel } from "@/lib/savings/movement"
+import {
+  applyMovementToBalance,
+  movementDelta,
+  movementKindLabel,
+  validateSavingsMovementAmount,
+} from "@/lib/savings/movement"
 
 describe("normalizeCurrencyCode", () => {
   it("defaults missing currency to CRC", () => {
@@ -16,6 +21,20 @@ describe("normalizeCurrencyCode", () => {
 describe("amountToReportingBase", () => {
   it("treats missing currency as CRC", () => {
     expect(amountToReportingBase(1000, undefined, 505)).toBe(1000)
+  })
+})
+
+describe("validateSavingsMovementAmount", () => {
+  it("rejects non-positive amounts for deposits", () => {
+    expect(() => validateSavingsMovementAmount("DEPOSIT", 0)).toThrow(/positive/)
+  })
+
+  it("rejects negative adjustment targets", () => {
+    expect(() => validateSavingsMovementAmount("ADJUSTMENT", -5)).toThrow(/negative/)
+  })
+
+  it("allows zero adjustment balance", () => {
+    expect(() => validateSavingsMovementAmount("ADJUSTMENT", 0)).not.toThrow()
   })
 })
 
@@ -40,6 +59,12 @@ describe("applyMovementToBalance", () => {
   it("sets absolute balance on adjustment", () => {
     expect(applyMovementToBalance(100, "ADJUSTMENT", 75)).toBe(75)
     expect(applyMovementToBalance(100, "ADJUSTMENT", 0)).toBe(0)
+  })
+
+  it("rejects unknown movement kind", () => {
+    expect(() => applyMovementToBalance(100, "UNKNOWN" as "DEPOSIT", 10)).toThrow(
+      /Unknown movement kind/,
+    )
   })
 })
 
