@@ -1,6 +1,8 @@
 /**
  * One-shot local setup: .env, Docker Postgres, deps, migrations, demo seed.
  * Safe to re-run — skips steps that are already done.
+ *
+ * Pass --reset-db to remove the Docker volume first (fixes PG 16 → 18 volume layout).
  */
 import { execSync } from "node:child_process"
 import { randomBytes } from "node:crypto"
@@ -12,6 +14,10 @@ import { fileURLToPath } from "node:url"
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..")
 const envPath = path.join(root, ".env")
 const envExamplePath = path.join(root, ".env.example")
+const resetDb = process.argv.includes("--reset-db")
+
+const PG18_VOLUME_CONFLICT =
+  /Counter to that, there appears to be PostgreSQL data in|configured to store database data in a/i
 
 function log(msg) {
   console.log(`[setup] ${msg}`)
@@ -63,14 +69,95 @@ function ensureEnv() {
   }
 }
 
+const LOCAL_DATABASE_URL =
+  "postgresql://expense:expense@localhost:5432/expense_app?schema=public"
+
+function ensurePostgresDatabaseUrl() {
+  let content = readFileSync(envPath, "utf8")
+  const match = content.match(/^\s*DATABASE_URL\s*=\s*["']?([^"'\s#]+)/m)
+  const url = match?.[1] ?? ""
+  if (/^postgres(ql)?:\/\//i.test(url)) return
+
+  log("DATABASE_URL is not Postgres — setting local Docker URL")
+  if (/^\s*DATABASE_URL\s*=/m.test(content)) {
+    content = content.replace(
+      /^\s*DATABASE_URL\s*=.*$/m,
+      `DATABASE_URL="${LOCAL_DATABASE_URL}"`,
+    )
+  } else {
+    content = `DATABASE_URL="${LOCAL_DATABASE_URL}"\n${content}`
+  }
+  writeFileSync(envPath, content, "utf8")
+}
+
+function postgresContainerRunning() {
+  try {
+    return runCapture("docker compose ps --status running -q postgres").length > 0
+  } catch {
+    return false
+  }
+}
+
+function postgresLogsTail(lines = 40) {
+  try {
+    return runCapture(`docker compose logs postgres --tail ${lines}`)
+  } catch {
+    return ""
+  }
+}
+
+function hasPg18VolumeConflict(logs) {
+  return PG18_VOLUME_CONFLICT.test(logs)
+}
+
+function resetPostgresVolume() {
+  log("Removing Docker volume (incompatible Postgres 16 data layout for PG 18)")
+  run("docker compose down -v")
+}
+
+async function startPostgres() {
+  log("Ensuring Postgres is up (docker compose up -d)")
+  try {
+    run("docker compose up -d --wait")
+    if (postgresContainerRunning()) return
+  } catch {
+    // --wait fails when the container exits; fall through to recovery
+  }
+
+  if (!postgresContainerRunning()) {
+    const logs = postgresLogsTail()
+    if (hasPg18VolumeConflict(logs)) {
+      resetPostgresVolume()
+      run("docker compose up -d --wait")
+      if (postgresContainerRunning()) return
+    }
+    console.error(logs)
+    throw new Error(
+      "Postgres container exited. If you upgraded from Postgres 16, run: pnpm setup:reset",
+    )
+  }
+}
+
 async function waitForPostgres(maxAttempts = 30) {
   for (let i = 1; i <= maxAttempts; i++) {
+    if (!postgresContainerRunning()) {
+      const logs = postgresLogsTail()
+      if (hasPg18VolumeConflict(logs)) {
+        resetPostgresVolume()
+        run("docker compose up -d")
+        await delay(3000)
+        continue
+      }
+      console.error(logs)
+      throw new Error("Postgres container is not running")
+    }
     try {
       runCapture("docker compose exec -T postgres pg_isready -U expense -d expense_app")
       log("Postgres is ready")
       return
     } catch {
       if (i === maxAttempts) {
+        console.error(postgresLogsTail())
         throw new Error("Postgres did not become ready in time")
       }
       log(`Waiting for Postgres (${i}/${maxAttempts})…`)
@@ -82,7 +169,7 @@ async function waitForPostgres(maxAttempts = 30) {
 function databaseInitialized() {
   try {
     const result = runCapture(
-      'docker compose exec -T postgres psql -U expense -d expense_app -tAc "SELECT 1 FROM _prisma_migrations LIMIT 1"',
+      'docker compose exec -T postgres psql -U expense -d expense_app -tAc "SELECT 1 FROM information_schema.tables WHERE table_schema = \'public\' AND table_name = \'_prisma_migrations\'"',
     )
     return result === "1"
   } catch {
@@ -99,10 +186,13 @@ async function main() {
   }
 
   ensureEnv()
+  ensurePostgresDatabaseUrl()
 
-  log("Ensuring Postgres is up (docker compose up -d)")
-  run("docker compose up -d")
+  if (resetDb) {
+    resetPostgresVolume()
+  }
 
+  await startPostgres()
   await waitForPostgres()
 
   if (!existsSync(path.join(root, "node_modules"))) {

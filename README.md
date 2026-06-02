@@ -56,4 +56,4 @@ pnpm dev
 
 For production Postgres, use a **pooler** URL in `DATABASE_URL` (see comments in [`.env.example`](.env.example)).
 
-**Upgrading from Postgres 16 in Docker:** the PG 18 image uses a different data volume path. Run `docker compose down -v`, then `pnpm setup` to recreate the database (or dump/restore if you need to keep data).
+**Postgres won’t start after upgrading to 18?** Your Docker volume may still have PG 16 data. Run `pnpm setup:reset` (wipes the DB volume and re-runs setup) or `docker compose down -v` then `pnpm setup`.
