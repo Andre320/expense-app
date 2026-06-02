@@ -8,7 +8,7 @@ Personal expense tracker and financial planner: ledger, categories, BAC/CSV impo
 
 - [Node.js](https://nodejs.org) 22+
 - [pnpm](https://pnpm.io) — `npm install -g pnpm`
-- [Docker Desktop](https://www.docker.com/products/docker-desktop/) (runs PostgreSQL locally)
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/) (runs **PostgreSQL 18** locally)
 
 ## Quick start
 
@@ -55,3 +55,5 @@ pnpm dev
 | `pnpm test:e2e`     | Playwright E2E (after `pnpm setup`) |
 
 For production Postgres, use a **pooler** URL in `DATABASE_URL` (see comments in [`.env.example`](.env.example)).
+
+**Upgrading from Postgres 16 in Docker:** the PG 18 image uses a different data volume path. Run `docker compose down -v`, then `pnpm setup` to recreate the database (or dump/restore if you need to keep data).
