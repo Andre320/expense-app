@@ -19,6 +19,7 @@ export function ImportWorkspace({ hideIntro }: ImportWorkspaceProps) {
   const [bank, setBank] = React.useState<"BAC">("BAC")
   const [pdfPages, setPdfPages] = React.useState(0)
   const [bacPreview, setBacPreview] = React.useState<BacPreviewRow[]>([])
+  const [bacWarnings, setBacWarnings] = React.useState<string[]>([])
 
   const importMut = useMutation({
     mutationFn: async (rows: object[]) => {
@@ -36,6 +37,7 @@ export function ImportWorkspace({ hideIntro }: ImportWorkspaceProps) {
       qc.invalidateQueries({ queryKey: ["transactions"] })
       qc.invalidateQueries({ queryKey: ["analytics"] })
       setBacPreview([])
+      setBacWarnings([])
     },
     onError: (e: Error) => toast.error(e.message),
   })
@@ -54,8 +56,8 @@ export function ImportWorkspace({ hideIntro }: ImportWorkspaceProps) {
     },
     onSuccess: (data) => {
       setBacPreview(data.transactions)
+      setBacWarnings(data.warnings)
       setPdfPages(data.pages)
-      for (const w of data.warnings) toast.message(w)
       toast.success(
         data.transactions.length
           ? `Parsed ${data.transactions.length} purchase(s)`
@@ -102,6 +104,7 @@ export function ImportWorkspace({ hideIntro }: ImportWorkspaceProps) {
             onValueChange={(v) => {
               setBank(v as "BAC")
               setBacPreview([])
+              setBacWarnings([])
             }}
             options={[{ value: "BAC", label: "BAC (Costa Rica)" }]}
             className="max-w-xs"
@@ -121,6 +124,7 @@ export function ImportWorkspace({ hideIntro }: ImportWorkspaceProps) {
           <ImportPdfTab
             bank={bank}
             bacPreview={bacPreview}
+            bacWarnings={bacWarnings}
             pdfPages={pdfPages}
             bacParseMut={bacParseMut}
             importMut={importMut}

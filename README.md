@@ -1,159 +1,57 @@
 # Expense App
 
-Multi-user expense and financial planning app built with Next.js, PostgreSQL, and Auth.js.
+Personal expense tracker and financial planner: ledger, categories, BAC/CSV import, Costa Rica income/tax planner, savings goals, RSU vesting, and stock quotes. Each user has isolated data (Auth.js login).
 
-## Getting Started
+**Stack:** [Next.js](https://nextjs.org) (App Router) · React · TypeScript · [Prisma](https://www.prisma.io) · PostgreSQL · [Auth.js](https://authjs.dev) · Tailwind · Vitest · Playwright
 
-This project uses [pnpm](https://pnpm.io) as its package manager.
+## Prerequisites
 
-### 1. Environment
+- [Node.js](https://nodejs.org) 22+
+- [pnpm](https://pnpm.io) — `npm install -g pnpm`
+- [Docker Desktop](https://www.docker.com/products/docker-desktop/) (runs PostgreSQL locally)
 
-Copy the example env file and adjust if needed:
+## Quick start
 
-```bash
-cp .env.example .env
-```
-
-Required variables:
-
-```env
-DATABASE_URL="postgresql://expense:expense@localhost:5432/expense_app?schema=public"
-AUTH_SECRET="generate-with-openssl-rand-base64-32"
-```
-
-Generate `AUTH_SECRET`:
+From the project root:
 
 ```bash
-openssl rand -base64 32
+pnpm setup
+pnpm dev
 ```
 
-### 2. Start PostgreSQL
+`pnpm setup` runs [`scripts/init.mjs`](scripts/init.mjs). It only does work that is still missing:
+
+1. Creates `.env` from `.env.example` and generates `AUTH_SECRET` if needed
+2. Starts Postgres with Docker (`docker compose up -d`)
+3. Runs `pnpm install` if `node_modules` is absent
+4. Runs migrations + demo seed if the database is not initialized yet
+
+Open [http://localhost:3000](http://localhost:3000) and sign in:
+
+| Email              | Password            |
+| ------------------ | ------------------- |
+| `demo@example.com` | `demo-password-123` |
+
+Register at `/register` for your own account.
+
+## Manual setup (optional)
 
 ```bash
+cp .env.example .env          # then set AUTH_SECRET (openssl rand -base64 32)
 docker compose up -d
-```
-
-### 3. Install dependencies
-
-```bash
 pnpm install
+pnpm run db:setup             # migrate + seed
+pnpm dev
 ```
 
-This runs `prisma generate` via `postinstall`, producing the Prisma client at `app/generated/prisma` (gitignored).
+## Useful commands
 
-### 4. Database setup
+| Command             | Purpose                             |
+| ------------------- | ----------------------------------- |
+| `pnpm dev`          | Development server                  |
+| `pnpm build`        | Production build                    |
+| `pnpm check`        | Format, lint, tests (CI gate)       |
+| `pnpm run db:setup` | Apply migrations and seed           |
+| `pnpm test:e2e`     | Playwright E2E (after `pnpm setup`) |
 
-Apply migrations and optionally load demo data:
-
-```bash
-pnpm run db:setup
-```
-
-Or run the steps individually:
-
-```bash
-pnpm run db:migrate   # interactive — creates migration when schema changes
-pnpm run db:seed      # demo user + sample categories, settings, savings, RSU
-```
-
-For CI or non-interactive environments, use `prisma migrate deploy` (included in `db:setup`).
-
-After seeding, sign in with:
-
-- Email: `demo@example.com`
-- Password: `demo-password-123`
-
-### 5. Start the dev server
-
-```bash
-pnpm run dev
-```
-
-Open [http://localhost:3000](http://localhost:3000). Unauthenticated requests redirect to `/login`.
-
-## Authentication
-
-- **Auth.js v5** with email/password credentials (JWT sessions)
-- Register at `/register`; each user gets isolated settings, categories, transactions, savings, and RSU data
-- API routes require a valid session (except `/api/auth/*`)
-
-## Database
-
-The app uses **PostgreSQL** via Prisma 7.
-
-| Script                | Purpose                                                          |
-| --------------------- | ---------------------------------------------------------------- |
-| `pnpm run db:migrate` | Apply schema changes interactively (creates new migration files) |
-| `pnpm run db:push`    | Push schema to DB without creating a migration (prototyping)     |
-| `pnpm run db:seed`    | Load demo user and sample data                                   |
-| `pnpm run db:setup`   | Apply existing migrations + seed                                 |
-
-### Schema changes
-
-1. Edit `prisma/schema.prisma`
-2. Run `pnpm run db:migrate` to create and apply a migration
-3. Commit the new migration SQL under `prisma/migrations/`
-
-## Scripts
-
-```bash
-pnpm run dev          # development server
-pnpm run build        # production build
-pnpm run start        # production server
-pnpm run check                 # format + lint + test coverage (lib ≥95% gate)
-pnpm run lint                  # ESLint
-pnpm run test                  # Vitest (lib + component tests)
-pnpm run test:coverage:product # coverage report: lib + feature UI (95% target)
-pnpm run test:e2e              # Playwright E2E (needs Docker + db:setup)
-pnpm run test:e2e:ui           # Playwright interactive UI mode
-```
-
-Plans: [UI & E2E](docs/plans/ui-coverage-and-e2e.plan.md) · [Error handling](docs/plans/error-handling.plan.md) · [Industry standards audit](docs/plans/industry-standards-audit.md).
-
-## E2E tests (Playwright)
-
-End-to-end tests exercise real login, API, and database flows. They are **not** part of `pnpm check` (slow; requires Postgres).
-
-### Prerequisites
-
-1. Copy and configure env (see [Environment](#1-environment) above).
-2. Start PostgreSQL:
-
-   ```bash
-   docker compose up -d
-   ```
-
-3. Apply migrations and seed the demo user:
-
-   ```bash
-   pnpm run db:setup
-   ```
-
-4. Install dependencies (includes `@playwright/test`):
-
-   ```bash
-   pnpm install
-   pnpm exec playwright install chromium
-   ```
-
-### Run locally
-
-Playwright starts `pnpm dev` automatically unless a server is already running on port 3000 (`reuseExistingServer`).
-
-```bash
-pnpm run test:e2e
-```
-
-Interactive/debug mode:
-
-```bash
-pnpm run test:e2e:ui
-```
-
-Demo credentials (from seed): `demo@example.com` / `demo-password-123`.
-
-Ensure `.env` includes `DATABASE_URL` (Postgres) and `AUTH_SECRET`. Playwright injects a test-only `AUTH_SECRET` when starting the dev server if yours is unset; a manually started `pnpm dev` still needs a real secret.
-
-### CI
-
-Set `CI=true` so Playwright runs `pnpm build && pnpm start` instead of the dev server.
+For production Postgres, use a **pooler** URL in `DATABASE_URL` (see comments in [`.env.example`](.env.example)).

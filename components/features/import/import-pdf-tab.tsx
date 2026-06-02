@@ -17,6 +17,7 @@ export type { BacPreviewRow }
 type ImportPdfTabProps = {
   bank: "BAC"
   bacPreview: BacPreviewRow[]
+  bacWarnings: string[]
   pdfPages: number
   bacParseMut: UseMutationResult<
     { transactions: BacPreviewRow[]; warnings: string[]; pages: number },
@@ -30,6 +31,7 @@ type ImportPdfTabProps = {
 export function ImportPdfTab({
   bank,
   bacPreview,
+  bacWarnings,
   pdfPages,
   bacParseMut,
   importMut,
@@ -104,6 +106,16 @@ export function ImportPdfTab({
             <div className="space-y-2">
               <Skeleton className="h-4 w-32" />
               <Skeleton className="h-24 w-full" />
+            </div>
+          )}
+          {bacWarnings.length > 0 && (
+            <div className="space-y-1.5 rounded-md border border-amber-200/60 bg-amber-50/50 p-3 dark:border-amber-900/50 dark:bg-amber-950/20">
+              <p className="text-sm font-medium">Parser warnings</p>
+              <ul className="text-muted-foreground list-disc space-y-0.5 pl-4 text-sm">
+                {bacWarnings.map((warning) => (
+                  <li key={warning}>{warning}</li>
+                ))}
+              </ul>
             </div>
           )}
         </CardContent>

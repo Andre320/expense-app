@@ -2,10 +2,13 @@ import "server-only"
 
 import type { PrismaClient } from "@/app/generated/prisma/client"
 import { serializeSavings } from "@/lib/shared/serialize"
-import { type savingsCreateZ } from "@/lib/shared/validators"
+import { numFromDecimal } from "@/lib/shared/utils"
+import { type savingsCreateZ, type savingsUpdateZ } from "@/lib/shared/validators"
+import { applySavingsGoalMovement } from "@/lib/savings/services/movement.service"
 import type { z } from "zod"
 
 type SavingsCreate = z.infer<typeof savingsCreateZ>
+type SavingsUpdate = z.infer<typeof savingsUpdateZ>
 
 export async function listSerializedSavingsGoals(prisma: PrismaClient, userId: string) {
   const goals = await prisma.savingsGoal.findMany({
@@ -52,4 +55,49 @@ export async function createSavingsGoal(prisma: PrismaClient, userId: string, d:
 
     return serializeSavings(created)
   })
+}
+
+export async function updateSavingsGoal(
+  prisma: PrismaClient,
+  userId: string,
+  id: string,
+  d: SavingsUpdate,
+) {
+  const goal = await prisma.savingsGoal.findFirst({ where: { id, userId } })
+  if (!goal) throw new Error("Not found")
+
+  if (d.currentAmount != null) {
+    const current = numFromDecimal(goal.currentAmount)
+    if (d.currentAmount !== current) {
+      await applySavingsGoalMovement(prisma, userId, id, {
+        kind: "ADJUSTMENT",
+        amount: d.currentAmount,
+        description: "Balance correction",
+      })
+    }
+  }
+
+  try {
+    const updated = await prisma.savingsGoal.update({
+      where: { id },
+      data: {
+        ...(d.name != null && { name: d.name }),
+        ...(d.targetAmount !== undefined && {
+          targetAmount: d.targetAmount == null ? null : String(d.targetAmount),
+        }),
+        ...(d.priorityOrder !== undefined && { priorityOrder: d.priorityOrder }),
+        ...(d.color !== undefined && { color: d.color }),
+        ...(d.notes !== undefined && { notes: d.notes }),
+      },
+    })
+    return serializeSavings(updated)
+  } catch {
+    throw new Error("Not found")
+  }
+}
+
+export async function deleteSavingsGoal(prisma: PrismaClient, userId: string, id: string) {
+  const existing = await prisma.savingsGoal.findFirst({ where: { id, userId } })
+  if (!existing) throw new Error("Not found")
+  await prisma.savingsGoal.delete({ where: { id } })
 }
