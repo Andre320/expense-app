@@ -7,7 +7,7 @@ import { useCreateGoalForm, useSavingsGoalsQuery, useSortedGoals } from "./use-s
 export type { SavingsGoalDto } from "./use-savings-goals"
 
 export function SavingsGoalsManager({ embedded }: { embedded?: boolean }) {
-  const { data, isPending } = useSavingsGoalsQuery()
+  const { data, isPending, isError, error, refetch } = useSavingsGoalsQuery()
   const sorted = useSortedGoals(data)
   const form = useCreateGoalForm()
 
@@ -36,7 +36,13 @@ export function SavingsGoalsManager({ embedded }: { embedded?: boolean }) {
         createMut={form.createMut}
       />
 
-      <GoalList goals={sorted} isPending={isPending} />
+      <GoalList
+        goals={sorted}
+        isPending={isPending}
+        isError={isError}
+        errorMessage={error?.message}
+        onRetry={() => void refetch()}
+      />
     </div>
   )
 }

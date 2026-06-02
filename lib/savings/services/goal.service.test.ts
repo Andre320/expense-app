@@ -42,6 +42,21 @@ describe("goal.service", () => {
     expect(rows[0]!.name).toBe("Vacation")
   })
 
+  it("defaults currentAmount to zero when omitted", async () => {
+    prisma.$transaction.mockImplementation(async (fn) => {
+      if (typeof fn === "function") return fn(prisma)
+      return fn
+    })
+    await createSavingsGoal(prisma, userId, {
+      name: "Empty start",
+      targetAmount: 100,
+    })
+    expect(prisma.savingsGoalMovement.create).not.toHaveBeenCalled()
+    expect(prisma.savingsGoal.create).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ currentAmount: "0" }) }),
+    )
+  })
+
   it("creates goal with opening movement", async () => {
     const created = await createSavingsGoal(prisma, userId, {
       name: "Vacation",
@@ -50,6 +65,36 @@ describe("goal.service", () => {
     })
     expect(created.currentAmount).toBe(10000)
     expect(prisma.savingsGoalMovement.create).toHaveBeenCalled()
+  })
+
+  it("uses next priority when aggregate max is null", async () => {
+    ensureModel(prisma, "savingsGoal").aggregate!.mockResolvedValue({
+      _max: { priorityOrder: null },
+    })
+    await createSavingsGoal(prisma, userId, {
+      name: "First goal",
+      currentAmount: 0,
+      targetAmount: 100,
+    })
+    expect(prisma.savingsGoal.create).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ priorityOrder: 1 }) }),
+    )
+  })
+
+  it("honors explicit priorityOrder over aggregate default", async () => {
+    prisma.$transaction.mockImplementation(async (fn) => {
+      if (typeof fn === "function") return fn(prisma)
+      return fn
+    })
+    await createSavingsGoal(prisma, userId, {
+      name: "Priority 9",
+      currentAmount: 0,
+      targetAmount: 100,
+      priorityOrder: 9,
+    })
+    expect(prisma.savingsGoal.create).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ priorityOrder: 9 }) }),
+    )
   })
 
   it("creates goal without opening movement when amount is zero", async () => {

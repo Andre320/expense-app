@@ -59,6 +59,21 @@ describe("buildBacImportPreview", () => {
     expect(findMany).toHaveBeenCalledOnce()
   })
 
+  it("handles empty store rules with uncategorized fallback", async () => {
+    vi.mocked(loadStoreMappingContext).mockResolvedValue({
+      rules: [],
+      uncategorizedCategoryId: "cat-uncat",
+    })
+    findMany.mockResolvedValue([{ id: "cat-uncat", name: "Uncategorized" }])
+    const { transactions } = await buildBacImportPreview(prisma, "user-1", syntheticBBlock)
+    expect(transactions[0]!.categoryId).toBe("cat-uncat")
+    expect(findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ id: { in: ["cat-uncat"] } }),
+      }),
+    )
+  })
+
   it("warns when no purchase rows were parsed", async () => {
     const { transactions, warnings } = await buildBacImportPreview(
       prisma,

@@ -4,6 +4,7 @@ import { prisma } from "@/lib/db/client"
 import { serializeSavings } from "@/lib/shared/serialize"
 import { applySavingsGoalMovement } from "@/lib/savings/services/movement.service"
 import { numFromDecimal } from "@/lib/shared/utils"
+import { validationErrorResponse } from "@/lib/shared/api-error"
 import { savingsUpdateZ } from "@/lib/shared/validators"
 
 type Ctx = { params: Promise<{ id: string }> }
@@ -16,7 +17,7 @@ export async function PATCH(req: Request, ctx: Ctx) {
   const json = await req.json().catch(() => null)
   const parsed = savingsUpdateZ.safeParse(json)
   if (!parsed.success) {
-    return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })
+    return validationErrorResponse(parsed.error)
   }
   const d = parsed.data
   try {

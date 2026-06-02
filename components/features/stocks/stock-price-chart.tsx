@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card"
 import { DEFAULT_STOCK_TICKER } from "@/lib/stocks/defaults"
 import type { ForecastChartPoint, ForecastSummary } from "@/lib/stocks/forecast"
 import type { StockTickerOption } from "@/lib/stocks/ticker-options"
+import { fetchJson } from "@/lib/shared/api-error"
 import { STOCK_RANGE_CONFIG, type StockRange } from "@/lib/stocks/range"
 
 export type StockHistoryResponse = {
@@ -29,12 +30,9 @@ export async function fetchStockHistory(
   ticker: string,
   range: StockRange,
 ): Promise<StockHistoryResponse> {
-  const res = await fetch(`/api/stocks/history/${encodeURIComponent(ticker)}?range=${range}`)
-  if (!res.ok) {
-    const body = (await res.json().catch(() => ({}))) as StockHistoryResponse
-    throw new Error(body.error ?? "Could not load price history")
-  }
-  return res.json()
+  return fetchJson<StockHistoryResponse>(
+    `/api/stocks/history/${encodeURIComponent(ticker)}?range=${range}`,
+  )
 }
 
 export function StockPriceChart({

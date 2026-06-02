@@ -100,7 +100,60 @@ The app uses **PostgreSQL** via Prisma 7.
 pnpm run dev          # development server
 pnpm run build        # production build
 pnpm run start        # production server
-pnpm run check        # format + lint + test coverage
-pnpm run lint         # ESLint
-pnpm run test         # Vitest
+pnpm run check                 # format + lint + test coverage (lib ≥95% gate)
+pnpm run lint                  # ESLint
+pnpm run test                  # Vitest (lib + component tests)
+pnpm run test:coverage:product # coverage report: lib + feature UI (95% target)
+pnpm run test:e2e              # Playwright E2E (needs Docker + db:setup)
+pnpm run test:e2e:ui           # Playwright interactive UI mode
 ```
+
+Plans: [UI & E2E](docs/plans/ui-coverage-and-e2e.plan.md) · [Error handling](docs/plans/error-handling.plan.md) · [Industry standards audit](docs/plans/industry-standards-audit.md).
+
+## E2E tests (Playwright)
+
+End-to-end tests exercise real login, API, and database flows. They are **not** part of `pnpm check` (slow; requires Postgres).
+
+### Prerequisites
+
+1. Copy and configure env (see [Environment](#1-environment) above).
+2. Start PostgreSQL:
+
+   ```bash
+   docker compose up -d
+   ```
+
+3. Apply migrations and seed the demo user:
+
+   ```bash
+   pnpm run db:setup
+   ```
+
+4. Install dependencies (includes `@playwright/test`):
+
+   ```bash
+   pnpm install
+   pnpm exec playwright install chromium
+   ```
+
+### Run locally
+
+Playwright starts `pnpm dev` automatically unless a server is already running on port 3000 (`reuseExistingServer`).
+
+```bash
+pnpm run test:e2e
+```
+
+Interactive/debug mode:
+
+```bash
+pnpm run test:e2e:ui
+```
+
+Demo credentials (from seed): `demo@example.com` / `demo-password-123`.
+
+Ensure `.env` includes `DATABASE_URL` (Postgres) and `AUTH_SECRET`. Playwright injects a test-only `AUTH_SECRET` when starting the dev server if yours is unset; a manually started `pnpm dev` still needs a real secret.
+
+### CI
+
+Set `CI=true` so Playwright runs `pnpm build && pnpm start` instead of the dev server.

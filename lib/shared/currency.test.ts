@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest"
-import { computeDualAmounts, normalizeCurrencyCode, roundMoney } from "@/lib/shared/currency"
+import {
+  amountToReportingBase,
+  computeDualAmounts,
+  normalizeCurrencyCode,
+  roundMoney,
+} from "@/lib/shared/currency"
 
 describe("normalizeCurrencyCode", () => {
   it("defaults to CRC", () => {
@@ -39,6 +44,16 @@ describe("computeDualAmounts", () => {
     expect(dual.amountQuote).toBe(100)
   })
 
+  it("treats unknown currency like CRC for dual amounts", () => {
+    const dual = computeDualAmounts({
+      amountOriginal: 100,
+      currencyCode: "EUR",
+      crcPerUsd: 500,
+    })
+    expect(dual.rateToBase).toBe(1)
+    expect(dual.amountBase).toBe(100)
+  })
+
   it("clamps tiny crcPerUsd to avoid division by zero", () => {
     const dual = computeDualAmounts({
       amountOriginal: 10,
@@ -47,6 +62,12 @@ describe("computeDualAmounts", () => {
     })
     expect(dual.rateToQuote).toBeGreaterThan(0)
     expect(Number.isFinite(dual.amountQuote)).toBe(true)
+  })
+})
+
+describe("amountToReportingBase", () => {
+  it("converts USD holdings to CRC base", () => {
+    expect(amountToReportingBase(10, "USD", 500)).toBe(5000)
   })
 })
 

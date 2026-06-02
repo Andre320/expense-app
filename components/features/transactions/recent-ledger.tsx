@@ -3,7 +3,10 @@
 import Link from "next/link"
 import { useQuery } from "@tanstack/react-query"
 import { format } from "date-fns"
+import { EmptyState } from "@/components/patterns/empty-state"
+import { QueryErrorPanel } from "@/components/patterns/query-error-panel"
 import { formatMoneyBase } from "@/lib/shared/format-money"
+import { fetchJson } from "@/lib/shared/api-error"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -32,14 +35,12 @@ async function fetchRecent(baseCurrency: string) {
     sortBy: "occurredAt",
     sortDir: "desc",
   })
-  const res = await fetch(`/api/transactions?${params}`)
-  if (!res.ok) throw new Error("tx")
-  const j = (await res.json()) as { items: Tx[] }
+  const j = await fetchJson<{ items: Tx[] }>(`/api/transactions?${params}`)
   return { items: j.items, baseCurrency }
 }
 
 export function RecentLedger({ baseCurrency }: { baseCurrency: string }) {
-  const { data, isPending } = useQuery({
+  const { data, isPending, isError, error, refetch } = useQuery({
     queryKey: ["transactions", "recent-dashboard", baseCurrency],
     queryFn: () => fetchRecent(baseCurrency),
   })
@@ -56,15 +57,30 @@ export function RecentLedger({ baseCurrency }: { baseCurrency: string }) {
       </div>
     )
   }
+
+  if (isError) {
+    return (
+      <QueryErrorPanel
+        title="Could not load recent entries"
+        message={error?.message ?? "Ledger is unavailable."}
+        onRetry={() => void refetch()}
+      />
+    )
+  }
+
   if (!data?.items.length) {
     return (
-      <p className="text-muted-foreground text-sm">
-        No transactions yet. Use{" "}
-        <Link href="/activity" className="underline-offset-2 hover:underline">
-          Activity
-        </Link>{" "}
-        to import or add rows.
-      </p>
+      <EmptyState
+        message={
+          <>
+            No transactions yet. Use{" "}
+            <Link href="/activity" className="underline-offset-2 hover:underline">
+              Activity
+            </Link>{" "}
+            to import or add rows.
+          </>
+        }
+      />
     )
   }
 

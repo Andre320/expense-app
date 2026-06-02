@@ -39,20 +39,66 @@ app/
   api/            Thin routes: validate → apiRequireUser → service → JSON
 ```
 
+## Industry alignment (Next.js / Vercel)
+
+| Practice            | This project                                         |
+| ------------------- | ---------------------------------------------------- |
+| Thin `app/` routing | Pages import from `components/features/*`            |
+| Route groups        | `(auth)/`, `(app)/`                                  |
+| API                 | Route Handlers + Zod + `apiRequireUser()` → services |
+| Design system       | `components/ui/` (shadcn, line budget exempt)        |
+| Domain logic        | `lib/<domain>/` + feature UI folders                 |
+| Tests               | Co-located `*.test.ts` beside modules                |
+
+See [Next.js project structure](https://nextjs.org/docs/app/getting-started/project-structure).
+
 ## Readability
 
-- **Max ~250 lines** per `.ts` / `.tsx` (exceptions: `components/ui/` shadcn primitives)
-- **One primary export** per file; helpers stay private or move to `*.utils.ts` in the same folder
-- **Routes:** validate with Zod → `apiRequireUser()` → call **one service function** → return JSON (no inline Prisma)
+- **Max 200 lines** per `.ts` / `.tsx` (product code; `components/ui/` exempt)
+- **One primary export** per file; helpers in `*.parts.tsx`, `use-*.ts`, `*-queries.ts` / `*-mutations.ts`
+- **Routes:** validate with Zod → `apiRequireUser()` → **one service function** → JSON
 - **Files:** `kebab-case.ts`; **folders:** plural domain nouns (`income/`, `stocks/`)
+
+### Split patterns
+
+1. **React feature:** `use-*.ts` hooks + `*-form.tsx` / `*-list.tsx` + thin composer `*.tsx`
+2. **Lib service:** `*.service.ts` + `*.helpers.ts` or read/mutations split
+3. **Lib math:** facade + `forecast-holt.ts`-style modules
+4. **Tests:** mirror production names (`plan.service.receive.test.ts`)
+
+### New module checklist
+
+- `lib/<domain>/services/<name>.service.ts` — stay under 200 lines
+- Co-located tests; thin route in `app/api/`
+- Feature UI split from day one
+
+Reference: [`app/api/categories/route.ts`](app/api/categories/route.ts) + [`lib/categories/services/category.service.ts`](lib/categories/services/category.service.ts).
 
 ## Testing
 
-- Co-located **`{module}.test.ts`** beside `{module}.ts` under `lib/` (not a top-level `tests/` tree)
-- Integration tests: `*.integration.test.ts` (real Postgres; skip when `DATABASE_URL` unset)
+- Co-located **`{module}.test.ts`** / **`{module}.test.tsx`** beside modules
+- Integration: `*.integration.test.ts` (Postgres; skip without `DATABASE_URL`)
+- Vitest: **unit** project (`node`) + **ui** project (`jsdom`); helpers in `components/test/`
 - Vitest shim: `lib/test/shims/server-only.ts`
-- Coverage thresholds (CI): **85%** statements, branches, functions, and lines on `lib/**/*.ts` (`lib/db/client.ts` excluded — app bootstrap singleton)
-- Run: `pnpm test`, `pnpm test:coverage`, full gate: `pnpm check`
+- **Coverage gate (`pnpm check`):** **≥95%** on `lib/**/*.ts` (`lib/db/client.ts` excluded)
+- **Product coverage (report only):** `pnpm test:coverage:product` — `lib/` + `components/features|patterns|shell` (target **95% overall**; see [`docs/plans/ui-coverage-and-e2e.plan.md`](docs/plans/ui-coverage-and-e2e.plan.md))
+- **E2E:** `pnpm test:e2e` — Playwright (`e2e/`); not in `pnpm check` (needs Docker + `db:setup`)
+- **Error handling:** [`docs/plans/error-handling.plan.md`](docs/plans/error-handling.plan.md) — see below
+- **Architecture audit:** [`docs/plans/industry-standards-audit.md`](docs/plans/industry-standards-audit.md) — what applies vs N/A for this stack
+
+### Error handling
+
+- API failures: `{ error: string }` via `errorResponse` / `validationErrorResponse` from `@/lib/shared/api-error`
+- Client: `fetchJson` / `parseApiError`; mutations → `toast.error(e.message)`; queries → `QueryErrorPanel` + retry (never empty state on `isError`)
+- App boundary: `app/(app)/error.tsx`
+- Meaningful tests only — branch/error paths, domain math, hooks with mocked `fetch`; no trivial asserts
+- Run: `pnpm test`, `pnpm test:coverage`, `pnpm test:coverage:product`, full gate: `pnpm check`
+
+| Scope                                      | CI gate (`pnpm check`)? | Notes                         |
+| ------------------------------------------ | ----------------------- | ----------------------------- |
+| `lib/**/*.ts`                              | Yes (≥95%)              | Domain logic                  |
+| `components/features`, `patterns`, `shell` | Report via `:product`   | Vitest + RTL; grow toward 95% |
+| `components/ui/`, `app/` pages             | No                      | shadcn; pages wired to E2E    |
 
 ## Service layer
 
@@ -68,6 +114,6 @@ export async function GET() {
 
 ## ESLint
 
-- `max-lines`: warn at 250 (CI treats warnings as failures via `--max-warnings 0`)
+- `max-lines`: **200** (skip blanks/comments); `components/ui/**` exempt
 - `complexity`: warn at 15
-- `@typescript-eslint/consistent-type-imports`: error
+- `--max-warnings 0` in CI

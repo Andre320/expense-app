@@ -4,6 +4,7 @@ import * as React from "react"
 import { useQuery } from "@tanstack/react-query"
 import { ChevronDown, ChevronUp } from "lucide-react"
 import { PageIntro } from "@/components/patterns/page-intro"
+import { QueryErrorPanel } from "@/components/patterns/query-error-panel"
 import { RsuPlansManager } from "@/components/features/rsu/rsu-plans-manager"
 import { StockPriceChart } from "@/components/features/stocks/stock-price-chart"
 import { Button } from "@/components/ui/button"
@@ -11,15 +12,11 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { DEFAULT_STOCK_TICKER } from "@/lib/stocks/defaults"
 import { buildStockTickerOptions, normalizeStockTicker } from "@/lib/stocks/ticker-options"
-
-type RsuPlanListItem = {
-  plan: { ticker: string }
-}
+import { fetchJson } from "@/lib/shared/api-error"
+import type { RsuPlanListItem } from "@/components/features/rsu/use-rsu-plans-queries"
 
 async function fetchRsuTickers(): Promise<string[]> {
-  const res = await fetch("/api/rsu-plans")
-  if (!res.ok) return []
-  const plans = (await res.json()) as RsuPlanListItem[]
+  const plans = await fetchJson<RsuPlanListItem[]>("/api/rsu-plans")
   return plans.map((p) => p.plan.ticker)
 }
 
@@ -65,12 +62,17 @@ export default function StocksPage() {
   const [ticker, setTicker] = React.useState(DEFAULT_STOCK_TICKER)
   const [simpleView, setSimpleView] = React.useState(false)
 
-  const { data: rsuTickers = [] } = useQuery({
+  const {
+    data: rsuTickers,
+    isError: tickersError,
+    error,
+    refetch,
+  } = useQuery({
     queryKey: ["rsu-plans", "tickers"],
     queryFn: fetchRsuTickers,
   })
 
-  const tickerOptions = React.useMemo(() => buildStockTickerOptions(rsuTickers), [rsuTickers])
+  const tickerOptions = React.useMemo(() => buildStockTickerOptions(rsuTickers ?? []), [rsuTickers])
 
   const symbol = normalizeStockTicker(ticker, tickerOptions)
 
@@ -88,6 +90,14 @@ export default function StocksPage() {
         title="Stocks"
         description="Company stock chart with Holt trend and volatility bands, plus RSU grant tracking with next-vest projections."
       />
+
+      {tickersError ? (
+        <QueryErrorPanel
+          title="Could not load RSU tickers"
+          message={error?.message ?? "Ticker list is unavailable — chart may still work."}
+          onRetry={() => void refetch()}
+        />
+      ) : null}
 
       <CollapsibleSection
         title={`${symbol} price${simpleView ? "" : " & forecast"}`}

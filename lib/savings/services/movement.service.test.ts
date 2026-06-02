@@ -1,9 +1,7 @@
 import { beforeEach, describe, expect, it } from "vitest"
 import {
   applySavingsAccountMovement,
-  applySavingsGoalMovement,
   listSavingsAccountMovements,
-  listSavingsGoalMovements,
 } from "@/lib/savings/services/movement.service"
 import { createMockPrisma, ensureModel } from "@/lib/test/fixtures/prisma-mock"
 
@@ -122,23 +120,10 @@ describe("movement.service", () => {
     ).rejects.toThrow("Not found")
   })
 
-  it("applies goal movement", async () => {
-    const result = await applySavingsGoalMovement(prisma, userId, "goal-1", {
-      kind: "DEPOSIT",
-      amount: 100,
-    })
-    expect(result.goal.currentAmount).toBe(300)
-  })
-
   it("lists account movements for owned account", async () => {
     const rows = await listSavingsAccountMovements(prisma, userId, "acct-1")
     expect(rows).toHaveLength(1)
     expect(rows[0]!.amount).toBe(500)
-  })
-
-  it("lists goal movements for owned goal", async () => {
-    const rows = await listSavingsGoalMovements(prisma, userId, "goal-1")
-    expect(rows).toHaveLength(1)
   })
 
   it("applies withdrawal from account", async () => {
@@ -191,18 +176,25 @@ describe("movement.service", () => {
     )
   })
 
-  it("throws when goal movement target is missing", async () => {
-    ensureModel(prisma, "savingsGoal").findFirst!.mockResolvedValue(null)
-    await expect(
-      applySavingsGoalMovement(prisma, userId, "missing", {
-        kind: "DEPOSIT",
-        amount: 10,
-      }),
-    ).rejects.toThrow("Not found")
+  it("uses current time when occurredAt omitted", async () => {
+    await applySavingsAccountMovement(prisma, userId, "acct-1", {
+      kind: "DEPOSIT",
+      amount: 10,
+    })
+    expect(prisma.savingsAccountMovement.create).toHaveBeenCalled()
   })
 
-  it("throws when listing goal movements for missing goal", async () => {
-    ensureModel(prisma, "savingsGoal").findFirst!.mockResolvedValue(null)
-    await expect(listSavingsGoalMovements(prisma, userId, "missing")).rejects.toThrow("Not found")
+  it("parses explicit occurredAt", async () => {
+    const occurredAt = "2026-06-15T10:00:00.000Z"
+    await applySavingsAccountMovement(prisma, userId, "acct-1", {
+      kind: "DEPOSIT",
+      amount: 10,
+      occurredAt,
+    })
+    expect(prisma.savingsAccountMovement.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ occurredAt: new Date(occurredAt) }),
+      }),
+    )
   })
 })

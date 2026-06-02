@@ -3,6 +3,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
 import * as React from "react"
 import { toast } from "sonner"
+import { fetchJson, parseApiError } from "@/lib/shared/api-error"
 import type { IncomeBonusDto } from "@/components/features/income/income-bonuses-manager"
 import { stringifyBonusMonths } from "@/lib/income/bonus"
 import { computeLiveExpectedNetForCurrentMonth } from "@/lib/income/profile"
@@ -23,9 +24,7 @@ export type Settings = {
 }
 
 export async function fetchSettings(): Promise<Settings> {
-  const res = await fetch("/api/settings")
-  if (!res.ok) throw new Error("settings")
-  return res.json()
+  return fetchJson("/api/settings")
 }
 
 export function useSettingsQuery() {
@@ -148,7 +147,7 @@ export function useIncomePlannerForm({
           crEsppPct: voluntaryPct.esppPct,
         }),
       })
-      if (!res.ok) throw new Error("Save failed")
+      if (!res.ok) throw await parseApiError(res)
       return res.json()
     },
     onSuccess: () => {

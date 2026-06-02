@@ -2,6 +2,7 @@ import { NextResponse } from "next/server"
 import { apiRequireUser, notFoundResponse } from "@/lib/auth/api-context"
 import { prisma } from "@/lib/db/client"
 import { deleteKnownStore, updateKnownStore } from "@/lib/store/services/known-store.service"
+import { errorResponse, validationErrorResponse } from "@/lib/shared/api-error"
 import { knownStoreUpdateZ } from "@/lib/shared/validators"
 
 type Ctx = { params: Promise<{ id: string }> }
@@ -14,7 +15,7 @@ export async function PATCH(req: Request, ctx: Ctx) {
   const json = await req.json().catch(() => null)
   const parsed = knownStoreUpdateZ.safeParse(json)
   if (!parsed.success) {
-    return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })
+    return validationErrorResponse(parsed.error)
   }
 
   try {
@@ -24,9 +25,9 @@ export async function PATCH(req: Request, ctx: Ctx) {
     const msg = e instanceof Error ? e.message : "Update failed"
     if (msg === "Not found") return notFoundResponse()
     if (msg === "Category not found") {
-      return NextResponse.json({ error: msg }, { status: 400 })
+      return errorResponse(msg, 400)
     }
-    return NextResponse.json({ error: msg }, { status: 409 })
+    return errorResponse(msg, 409)
   }
 }
 

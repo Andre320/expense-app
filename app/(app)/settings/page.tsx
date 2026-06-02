@@ -8,6 +8,7 @@ import { zodResolver } from "@hookform/resolvers/zod"
 import { toast } from "sonner"
 import { z } from "zod"
 import { PageIntro } from "@/components/patterns/page-intro"
+import { QueryErrorPanel } from "@/components/patterns/query-error-panel"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import {
@@ -23,6 +24,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { CategoriesManager } from "@/components/features/categories/categories-manager"
 import { StoreMappingsPanel } from "@/components/features/import/store-mappings-panel"
+import { fetchJson, parseApiError } from "@/lib/shared/api-error"
 
 const currencySchema = z.object({
   crCrcPerUsd: z.number().positive(),
@@ -33,9 +35,7 @@ type CurrencyForm = z.infer<typeof currencySchema>
 type SettingsDto = CurrencyForm
 
 async function fetchSettings(): Promise<SettingsDto> {
-  const res = await fetch("/api/settings")
-  if (!res.ok) throw new Error("settings")
-  return res.json()
+  return fetchJson("/api/settings")
 }
 
 function SettingsLoading() {
@@ -65,7 +65,7 @@ function SettingsPageContent() {
           : "currency"
 
   const qc = useQueryClient()
-  const { data, isPending } = useQuery({
+  const { data, isPending, isError, error, refetch } = useQuery({
     queryKey: ["settings"],
     queryFn: fetchSettings,
   })
@@ -82,7 +82,7 @@ function SettingsPageContent() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
       })
-      if (!res.ok) throw new Error("fail")
+      if (!res.ok) throw await parseApiError(res)
       return res.json()
     },
     onSuccess: () => {
@@ -90,11 +90,28 @@ function SettingsPageContent() {
       qc.invalidateQueries({ queryKey: ["settings"] })
       qc.invalidateQueries({ queryKey: ["analytics"] })
     },
-    onError: () => toast.error("Save failed"),
+    onError: (e: Error) => toast.error(e.message),
   })
 
-  if (isPending || !data) {
+  if (isPending) {
     return <SettingsLoading />
+  }
+
+  if (isError || !data) {
+    return (
+      <div className="space-y-8">
+        <PageIntro
+          eyebrow="Configuration"
+          title="Settings"
+          description="Exchange rate for USD conversions. Salary and optional payroll deductions are on the Income tab."
+        />
+        <QueryErrorPanel
+          title="Could not load settings"
+          message={error?.message ?? "Settings are unavailable."}
+          onRetry={() => void refetch()}
+        />
+      </div>
+    )
   }
 
   return (

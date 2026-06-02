@@ -5,12 +5,18 @@ import {
   createSavingsAccount,
   listSerializedSavingsAccounts,
 } from "@/lib/savings/services/account.service"
+import { errorResponse, validationErrorResponse } from "@/lib/shared/api-error"
 import { savingsAccountCreateZ } from "@/lib/shared/validators"
 
 export async function GET() {
   const ctx = await apiRequireUser()
   if (ctx.response) return ctx.response
-  return NextResponse.json(await listSerializedSavingsAccounts(prisma, ctx.userId))
+  try {
+    return NextResponse.json(await listSerializedSavingsAccounts(prisma, ctx.userId))
+  } catch (e) {
+    console.error("[GET /api/savings-accounts]", e)
+    return errorResponse("Could not load savings accounts", 500)
+  }
 }
 
 export async function POST(req: Request) {
@@ -20,13 +26,13 @@ export async function POST(req: Request) {
   const json = await req.json().catch(() => null)
   const parsed = savingsAccountCreateZ.safeParse(json)
   if (!parsed.success) {
-    return NextResponse.json({ error: parsed.error.flatten() }, { status: 400 })
+    return validationErrorResponse(parsed.error)
   }
   try {
     const created = await createSavingsAccount(prisma, ctx.userId, parsed.data)
     return NextResponse.json(created, { status: 201 })
   } catch (e) {
     const msg = e instanceof Error ? e.message : "Create failed"
-    return NextResponse.json({ error: msg }, { status: 400 })
+    return errorResponse(msg, 400)
   }
 }

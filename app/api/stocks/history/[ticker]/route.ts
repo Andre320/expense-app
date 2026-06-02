@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server"
 import { apiRequireUser } from "@/lib/auth/api-context"
+import { errorResponse } from "@/lib/shared/api-error"
 import { parseStockRange } from "@/lib/stocks/range"
 import { getStockHistory } from "@/lib/stocks/services/history.service"
 
@@ -12,9 +13,14 @@ export async function GET(req: Request, ctx: Ctx) {
   const { ticker } = await ctx.params
   const { searchParams } = new URL(req.url)
   const range = parseStockRange(searchParams.get("range"))
-  const history = await getStockHistory(ticker, range)
-  if (!history.available) {
-    return NextResponse.json(history, { status: 503 })
+  try {
+    const history = await getStockHistory(ticker, range)
+    if (!history.available) {
+      return NextResponse.json(history, { status: 503 })
+    }
+    return NextResponse.json(history)
+  } catch (e) {
+    console.error("[GET /api/stocks/history]", e)
+    return errorResponse("Could not load stock history", 500)
   }
-  return NextResponse.json(history)
 }

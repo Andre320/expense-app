@@ -65,6 +65,25 @@ describe("buildStockForecast", () => {
     expect(forecast!.summary.rangePositionPct).toBe(50)
   })
 
+  it("labels up momentum on strong rising series", () => {
+    const bars = Array.from({ length: 25 }, (_, i) => ({
+      date: `2026-01-${String((i % 28) + 1).padStart(2, "0")}T12:00:00Z`,
+      close: 50 + i * 5,
+    }))
+    const forecast = buildStockForecast(bars, HOLT_BY_RANGE.month)
+    expect(forecast!.summary.momentum).toBe("up")
+  })
+
+  it("handles zero or negative closes in log transform", () => {
+    const bars = [
+      { date: "2026-01-01T12:00:00Z", close: 0 },
+      { date: "2026-01-02T12:00:00Z", close: 100 },
+      { date: "2026-01-03T12:00:00Z", close: 105 },
+      { date: "2026-01-04T12:00:00Z", close: 110 },
+    ]
+    expect(buildStockForecast(bars, HOLT_BY_RANGE.month)).not.toBeNull()
+  })
+
   it("labels down momentum on falling prices", () => {
     const bars = Array.from({ length: 20 }, (_, i) => ({
       date: `2026-01-${String(i + 1).padStart(2, "0")}T12:00:00Z`,

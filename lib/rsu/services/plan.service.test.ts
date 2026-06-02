@@ -5,8 +5,6 @@ import {
   getRsuPlanDetail,
   listRsuPlanSummaries,
   listRsuVests,
-  receiveRsuVest,
-  undoRsuVestReceive,
   updateRsuPlan,
 } from "@/lib/rsu/services/plan.service"
 import { createMockPrisma, ensureModel } from "@/lib/test/fixtures/prisma-mock"
@@ -91,6 +89,20 @@ describe("plan.service", () => {
     expect(detail.vests).toHaveLength(1)
   })
 
+  it("creates plan with explicit position", async () => {
+    ensureModel(prisma, "rsuPlan").findFirst!.mockResolvedValue({ ...planRow, id: "plan-new" })
+    await createRsuPlan(prisma, userId, {
+      name: "Positioned",
+      ticker: "SNOW",
+      totalShares: 100,
+      grantDate: "2024-01-15T00:00:00.000Z",
+      position: 9,
+    })
+    expect(prisma.rsuPlan.create).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ position: 9 }) }),
+    )
+  })
+
   it("creates plan with vest schedule", async () => {
     ensureModel(prisma, "rsuPlan").findFirst!.mockResolvedValue({ ...planRow, id: "plan-new" })
     const detail = await createRsuPlan(prisma, userId, {
@@ -106,6 +118,23 @@ describe("plan.service", () => {
   it("updates owned plan", async () => {
     const detail = await updateRsuPlan(prisma, userId, "plan-1", { name: "Renamed" })
     expect(detail.plan.name).toBe("2024 Grant")
+  })
+
+  it("updates tax withhold and clears notes", async () => {
+    await updateRsuPlan(prisma, userId, "plan-1", {
+      taxWithholdPct: 15,
+      notes: null,
+      position: 2,
+    })
+    expect(prisma.rsuPlan.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          taxWithholdPct: "15",
+          notes: null,
+          position: 2,
+        }),
+      }),
+    )
   })
 
   it("deletes owned plan", async () => {
@@ -124,79 +153,6 @@ describe("plan.service", () => {
     expect(vests[0]!.sequence).toBe(1)
   })
 
-  it("marks vest received with quote", async () => {
-    ensureModel(prisma, "rsuPlan").findFirst!.mockResolvedValue(planRow)
-    const detail = await receiveRsuVest(prisma, userId, "plan-1", "vest-1")
-    expect(prisma.rsuVest.update).toHaveBeenCalled()
-    expect(detail.plan.id).toBe("plan-1")
-  })
-
-  it("rejects receive when vest already received", async () => {
-    ensureModel(prisma, "rsuVest").findFirstOrThrow!.mockResolvedValue({
-      ...planRow.vests[0],
-      status: "RECEIVED",
-    })
-    await expect(receiveRsuVest(prisma, userId, "plan-1", "vest-1")).rejects.toThrow(
-      "Vest already received",
-    )
-  })
-
-  it("rejects receive when quote unavailable", async () => {
-    vi.mocked(getStockQuote).mockResolvedValue({
-      available: false,
-      ticker: "SNOW",
-      error: "No quote",
-    })
-    await expect(receiveRsuVest(prisma, userId, "plan-1", "vest-1")).rejects.toThrow("No quote")
-  })
-
-  it("marks vest received with explicit receivedAt", async () => {
-    vi.mocked(getStockQuote).mockResolvedValue({
-      available: true,
-      ticker: "SNOW",
-      priceUsd: 150,
-      asOf: now.toISOString(),
-    })
-    await receiveRsuVest(prisma, userId, "plan-1", "vest-1", "2024-05-01T00:00:00.000Z")
-    expect(prisma.rsuVest.update).toHaveBeenCalledWith(
-      expect.objectContaining({
-        data: expect.objectContaining({
-          status: "RECEIVED",
-          receivedAt: new Date("2024-05-01T00:00:00.000Z"),
-        }),
-      }),
-    )
-  })
-
-  it("rejects receive when quote has no price and no error message", async () => {
-    vi.mocked(getStockQuote).mockResolvedValue({
-      available: false,
-      ticker: "SNOW",
-    })
-    await expect(receiveRsuVest(prisma, userId, "plan-1", "vest-1")).rejects.toThrow(
-      "Stock quote required to mark vest received",
-    )
-  })
-
-  it("undoes vest receive", async () => {
-    ensureModel(prisma, "rsuVest").findFirstOrThrow!.mockResolvedValue({
-      ...planRow.vests[0],
-      status: "RECEIVED",
-    })
-    await undoRsuVestReceive(prisma, userId, "plan-1", "vest-1")
-    expect(prisma.rsuVest.update).toHaveBeenCalledWith(
-      expect.objectContaining({
-        data: expect.objectContaining({ status: "PENDING" }),
-      }),
-    )
-  })
-
-  it("rejects undo when vest is pending", async () => {
-    await expect(undoRsuVestReceive(prisma, userId, "plan-1", "vest-1")).rejects.toThrow(
-      "Vest is not received",
-    )
-  })
-
   it("throws when updating missing plan", async () => {
     ensureModel(prisma, "rsuPlan").findFirst!.mockResolvedValue(null)
     await expect(updateRsuPlan(prisma, userId, "missing", { name: "X" })).rejects.toThrow(
@@ -213,27 +169,6 @@ describe("plan.service", () => {
         grantDate: "not-a-date",
       }),
     ).rejects.toThrow("Invalid grantDate")
-  })
-
-  it("stores cash bonus when fractional shares remain", async () => {
-    ensureModel(prisma, "rsuVest").findFirstOrThrow!.mockResolvedValue({
-      ...planRow.vests[0],
-      shares: "10.5",
-    })
-    vi.mocked(getStockQuote).mockResolvedValue({
-      available: true,
-      ticker: "SNOW",
-      priceUsd: 50,
-      asOf: now.toISOString(),
-    })
-    await receiveRsuVest(prisma, userId, "plan-1", "vest-1")
-    expect(prisma.rsuVest.update).toHaveBeenCalledWith(
-      expect.objectContaining({
-        data: expect.objectContaining({
-          cashBonusUsd: expect.any(String),
-        }),
-      }),
-    )
   })
 
   it("lists summaries with unavailable quote", async () => {

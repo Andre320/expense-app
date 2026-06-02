@@ -117,6 +117,14 @@ describe("category.service", () => {
     await expect(deleteCategory(prisma, userId, "missing")).rejects.toThrow("Not found")
   })
 
+  it("starts position at 1 when no categories of kind exist", async () => {
+    ensureModel(prisma, "category").aggregate!.mockResolvedValue({ _max: { position: null } })
+    await createCategory(prisma, userId, { name: "First", kind: "INCOME" })
+    expect(prisma.category.create).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ position: 1 }) }),
+    )
+  })
+
   it("creates category with default color when omitted", async () => {
     await createCategory(prisma, userId, { name: "Misc", kind: "INCOME" })
     expect(prisma.category.create).toHaveBeenCalledWith(

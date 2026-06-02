@@ -2,6 +2,7 @@
 
 import Link from "next/link"
 import { PageIntro } from "@/components/patterns/page-intro"
+import { QueryErrorPanel } from "@/components/patterns/query-error-panel"
 import { Button } from "@/components/ui/button"
 import { CR_CCSS_EMPLOYEE_RATE_2026 } from "@/lib/income/tax-calculator"
 import type { IncomeBonusDto } from "@/components/features/income/income-bonuses-manager"
@@ -21,7 +22,7 @@ export function IncomePlannerPanel({
   compactNav,
   bonuses = [],
 }: IncomePlannerPanelProps) {
-  const { data: settings, dataUpdatedAt, isPending, isError } = useSettingsQuery()
+  const { data: settings, dataUpdatedAt, isPending, isError, error, refetch } = useSettingsQuery()
 
   return (
     <div className="space-y-8">
@@ -46,10 +47,11 @@ export function IncomePlannerPanel({
       {isPending ? (
         <p className="text-muted-foreground text-sm">Loading saved profile…</p>
       ) : isError ? (
-        <p className="text-sm text-red-400">
-          Could not load saved profile. Check that the database is migrated and restart the dev
-          server after schema changes.
-        </p>
+        <QueryErrorPanel
+          title="Could not load saved profile"
+          message={error?.message ?? "Salary settings are unavailable."}
+          onRetry={() => void refetch()}
+        />
       ) : settings ? (
         <IncomePlannerContent
           key={dataUpdatedAt}

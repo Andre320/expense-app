@@ -18,4 +18,8 @@ describe("numFromDecimal", () => {
   it("parses decimal-like objects", () => {
     expect(numFromDecimal({ toString: () => "99.5" })).toBe(99.5)
   })
+
+  it("coerces other values via Number()", () => {
+    expect(numFromDecimal(true)).toBe(1)
+  })
 })

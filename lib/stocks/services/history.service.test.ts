@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { getStockHistory } from "@/lib/stocks/services/history.service"
+import type { StockRange } from "@/lib/stocks/range"
 
 function risingBars(count: number) {
   return Array.from({ length: count }, (_, i) => ({
@@ -65,6 +66,13 @@ describe("getStockHistory", () => {
     expect(result.error).toBe("Alpaca returned 500")
   })
 
+  it("returns error when bars field is missing", async () => {
+    fetchMock.mockResolvedValue({ ok: true, json: async () => ({}) })
+    const result = await getStockHistory("SNOW")
+    expect(result.available).toBe(false)
+    expect(result.error).toBe("No historical bars for ticker")
+  })
+
   it("returns error when no bars returned", async () => {
     fetchMock.mockResolvedValue({ ok: true, json: async () => ({ bars: [] }) })
 
@@ -89,14 +97,37 @@ describe("getStockHistory", () => {
     expect(result.error).toBe("History fetch failed")
   })
 
-  it("accepts StockRange object directly", async () => {
+  it("returns error when snapshot JSON is invalid", async () => {
+    fetchMock.mockResolvedValue({
+      ok: true,
+      json: async () => {
+        throw new Error("bad json")
+      },
+    })
+    const result = await getStockHistory("BADJSON")
+    expect(result.available).toBe(false)
+    expect(result.error).toBe("bad json")
+  })
+
+  it("accepts StockRange union directly without string parsing", async () => {
     fetchMock.mockResolvedValue({
       ok: true,
       json: async () => ({ bars: risingBars(20) }),
     })
 
-    const result = await getStockHistory("SNOW", "week")
-    expect(result.range).toBe("week")
+    const range: StockRange = "year"
+    const result = await getStockHistory("SNOW", range)
+    expect(result.range).toBe("year")
+  })
+
+  it("fetches day range with shorter cache revalidation", async () => {
+    fetchMock.mockResolvedValue({
+      ok: true,
+      json: async () => ({ bars: risingBars(20) }),
+    })
+    const result = await getStockHistory("SNOW", "day")
+    expect(result.range).toBe("day")
+    expect(result.available).toBe(true)
   })
 
   it("returns null forecast when too few bars for model", async () => {

@@ -6,7 +6,7 @@ import {
   serializeSavingsAccountMovement,
   serializeSavingsGoalMovement,
 } from "@/lib/shared/serialize"
-import { applyMovementToBalance, type SavingsMovementKind } from "@/lib/savings/movement"
+import { applyMovementToBalance, validateSavingsMovementAmount } from "@/lib/savings/movement"
 import { numFromDecimal } from "@/lib/shared/utils"
 import { savingsMovementCreateZ } from "@/lib/shared/validators"
 import type { z } from "zod"
@@ -20,14 +20,6 @@ function parseOccurredAt(value?: string): Date {
   return d
 }
 
-function validateMovementAmount(kind: SavingsMovementKind, amount: number) {
-  if (kind === "ADJUSTMENT") {
-    if (amount < 0) throw new Error("Adjustment balance cannot be negative")
-    return
-  }
-  if (amount <= 0) throw new Error("Amount must be positive")
-}
-
 export async function applySavingsAccountMovement(
   prisma: PrismaClient,
   userId: string,
@@ -35,7 +27,7 @@ export async function applySavingsAccountMovement(
   input: MovementCreate,
 ) {
   const d = savingsMovementCreateZ.parse(input)
-  validateMovementAmount(d.kind, d.amount)
+  validateSavingsMovementAmount(d.kind, d.amount)
   const occurredAt = parseOccurredAt(d.occurredAt)
 
   return prisma.$transaction(async (tx) => {
@@ -74,7 +66,7 @@ export async function applySavingsGoalMovement(
   input: MovementCreate,
 ) {
   const d = savingsMovementCreateZ.parse(input)
-  validateMovementAmount(d.kind, d.amount)
+  validateSavingsMovementAmount(d.kind, d.amount)
   const occurredAt = parseOccurredAt(d.occurredAt)
 
   return prisma.$transaction(async (tx) => {

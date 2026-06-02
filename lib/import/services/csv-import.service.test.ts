@@ -62,6 +62,24 @@ describe("csv-import.service", () => {
     expect(result.errors).toEqual(["Row 1: invalid date"])
   })
 
+  it("ignores blank categoryId and resolves by name", async () => {
+    await importCsvTransactions(prisma, userId, {
+      rows: [
+        {
+          occurredAt: "2026-05-01T00:00:00.000Z",
+          kind: "EXPENSE",
+          amountOriginal: 100,
+          currencyCode: "CRC",
+          categoryId: "   ",
+          categoryName: "Food",
+        },
+      ],
+    })
+    expect(prisma.category.findFirst).toHaveBeenCalledWith({
+      where: { userId, name: { equals: "Food" }, kind: "EXPENSE" },
+    })
+  })
+
   it("resolves category by id when provided", async () => {
     await importCsvTransactions(prisma, userId, {
       rows: [
