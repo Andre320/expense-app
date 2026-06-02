@@ -1,9 +1,4 @@
-/**
- * One-shot local setup: .env, Docker Postgres, deps, migrations, demo seed.
- * Safe to re-run — skips steps that are already done.
- *
- * Pass --reset-db to remove the Docker volume first (fixes PG 16 → 18 volume layout).
- */
+/** Local setup: .env, Docker Postgres, deps, migrations, demo seed. */
 import { execSync } from "node:child_process"
 import { randomBytes } from "node:crypto"
 import { copyFileSync, existsSync, readFileSync, writeFileSync } from "node:fs"
@@ -69,8 +64,7 @@ function ensureEnv() {
   }
 }
 
-const LOCAL_DATABASE_URL =
-  "postgresql://expense:expense@localhost:5432/expense_app?schema=public"
+const LOCAL_DATABASE_URL = "postgresql://expense:expense@localhost:5432/expense_app?schema=public"
 
 function ensurePostgresDatabaseUrl() {
   let content = readFileSync(envPath, "utf8")
@@ -80,10 +74,7 @@ function ensurePostgresDatabaseUrl() {
 
   log("DATABASE_URL is not Postgres — setting local Docker URL")
   if (/^\s*DATABASE_URL\s*=/m.test(content)) {
-    content = content.replace(
-      /^\s*DATABASE_URL\s*=.*$/m,
-      `DATABASE_URL="${LOCAL_DATABASE_URL}"`,
-    )
+    content = content.replace(/^\s*DATABASE_URL\s*=.*$/m, `DATABASE_URL="${LOCAL_DATABASE_URL}"`)
   } else {
     content = `DATABASE_URL="${LOCAL_DATABASE_URL}"\n${content}`
   }
@@ -111,7 +102,7 @@ function hasPg18VolumeConflict(logs) {
 }
 
 function resetPostgresVolume() {
-  log("Removing Docker volume (incompatible Postgres 16 data layout for PG 18)")
+  log("Removing Docker volume and recreating Postgres")
   run("docker compose down -v")
 }
 
@@ -132,9 +123,7 @@ async function startPostgres() {
       if (postgresContainerRunning()) return
     }
     console.error(logs)
-    throw new Error(
-      "Postgres container exited. If you upgraded from Postgres 16, run: pnpm setup:reset",
-    )
+    throw new Error("Postgres container exited. Try: pnpm setup:reset")
   }
 }
 
@@ -169,7 +158,7 @@ async function waitForPostgres(maxAttempts = 30) {
 function databaseInitialized() {
   try {
     const result = runCapture(
-      'docker compose exec -T postgres psql -U expense -d expense_app -tAc "SELECT 1 FROM information_schema.tables WHERE table_schema = \'public\' AND table_name = \'_prisma_migrations\'"',
+      "docker compose exec -T postgres psql -U expense -d expense_app -tAc \"SELECT 1 FROM information_schema.tables WHERE table_schema = 'public' AND table_name = '_prisma_migrations'\"",
     )
     return result === "1"
   } catch {

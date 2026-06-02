@@ -8,7 +8,6 @@ services:
       POSTGRES_PASSWORD: expense
       POSTGRES_DB: expense_app
     volumes:
-      # PG 18+ official image: mount parent dir (not .../data)
       - expense_pg_data:/var/lib/postgresql
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U expense -d expense_app"]
