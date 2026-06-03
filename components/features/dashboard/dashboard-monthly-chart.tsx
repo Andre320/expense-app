@@ -10,12 +10,6 @@ import {
 } from "recharts"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { formatMoneyBase } from "@/lib/shared/format-money"
-import {
-  rechartsAxisStroke,
-  rechartsBarCursor,
-  rechartsGridStroke,
-  rechartsLegendStyle,
-} from "@/lib/stocks/chart-style"
 
 type ChartPoint = {
   month: string
@@ -102,22 +96,15 @@ export function DashboardMonthlyChart({
       <CardContent className="h-[300px] min-h-[300px] pt-2">
         <ResponsiveContainer width="100%" height="100%" minWidth={0} minHeight={280}>
           <BarChart data={chartData} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke={rechartsGridStroke} vertical={false} />
-            <XAxis
-              dataKey="label"
-              stroke={rechartsAxisStroke}
-              tick={{ fontSize: 11, fill: rechartsAxisStroke }}
-            />
+            <CartesianGrid strokeDasharray="3 3" stroke="#27272a" vertical={false} />
+            <XAxis dataKey="label" stroke="#71717a" tick={{ fontSize: 11 }} />
             <YAxis
-              stroke={rechartsAxisStroke}
-              tick={{ fontSize: 11, fill: rechartsAxisStroke }}
+              stroke="#71717a"
+              tick={{ fontSize: 11 }}
               tickFormatter={(v) => `${v >= 1000 ? `${(v / 1000).toFixed(0)}k` : v}`}
             />
-            <Tooltip
-              cursor={rechartsBarCursor}
-              content={<MonthlyBarTooltip baseCurrency={baseCurrency} />}
-            />
-            <Legend wrapperStyle={rechartsLegendStyle} />
+            <Tooltip content={<MonthlyBarTooltip baseCurrency={baseCurrency} />} />
+            <Legend wrapperStyle={{ fontSize: 12 }} />
             {hasPlanned ? (
               <Bar
                 dataKey="plannedIncome"

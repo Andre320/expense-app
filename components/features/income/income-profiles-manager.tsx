@@ -6,13 +6,8 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { SelectField } from "@/components/select-field"
-import { formatMoneyBase } from "@/lib/shared/format-money"
-import { VoluntaryDeductionsFields } from "./planner-form.parts"
+import { IncomeProfilePeriodList } from "./income-profile-period-list"
 import { useIncomeProfiles } from "./use-income-profiles"
-
-function formatPeriodRange(from: string, to: string | null) {
-  return to ? `${from} → ${to}` : `${from} → ongoing`
-}
 
 export function IncomeProfilesManager() {
   const p = useIncomeProfiles()
@@ -122,81 +117,7 @@ export function IncomeProfilesManager() {
           ) : p.sorted.length === 0 ? (
             <p className="text-muted-foreground text-sm">No salary periods yet.</p>
           ) : (
-            <ul className="divide-border divide-y">
-              {p.sorted.map((row) => {
-                const isEditing = p.editingId === row.id
-                return (
-                  <li key={row.id} className="space-y-3 py-3">
-                    <div className="flex flex-wrap items-center justify-between gap-3">
-                      <div>
-                        <p className="font-medium">{row.label}</p>
-                        <p className="text-muted-foreground text-xs">
-                          {formatPeriodRange(row.effectiveFrom, row.effectiveTo)}
-                        </p>
-                        <p className="text-muted-foreground mt-1 text-xs tabular-nums">
-                          {formatMoneyBase(row.crSalaryGross, row.crSalaryCurrency)} gross ·{" "}
-                          {row.crPayPeriod === "BIWEEKLY" ? "biweekly" : "monthly"}
-                        </p>
-                        {!isEditing ? (
-                          <p className="text-muted-foreground text-xs">
-                            Solidarista {row.crSolidaristaPct}% · Pensión{" "}
-                            {row.crPensionComplementariaPct}% · ESPP {row.crEsppPct}%
-                          </p>
-                        ) : null}
-                      </div>
-                      <div className="flex flex-wrap gap-2">
-                        {!isEditing ? (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => p.startEditingDeductions(row)}
-                          >
-                            Edit deductions
-                          </Button>
-                        ) : null}
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          disabled={p.deleteMut.isPending}
-                          onClick={() => p.deleteMut.mutate(row.id)}
-                        >
-                          Remove
-                        </Button>
-                      </div>
-                    </div>
-                    {isEditing ? (
-                      <div className="space-y-3">
-                        <VoluntaryDeductionsFields
-                          solidaristaPct={p.editSolidaristaPct}
-                          onSolidaristaPctChange={p.setEditSolidaristaPct}
-                          pensionPct={p.editPensionPct}
-                          onPensionPctChange={p.setEditPensionPct}
-                          esppPct={p.editEsppPct}
-                          onEsppPctChange={p.setEditEsppPct}
-                        />
-                        <div className="flex flex-wrap gap-2">
-                          <Button
-                            size="sm"
-                            disabled={p.updateDeductionsMut.isPending}
-                            onClick={() => p.updateDeductionsMut.mutate(row.id)}
-                          >
-                            {p.updateDeductionsMut.isPending ? "Saving…" : "Save"}
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            disabled={p.updateDeductionsMut.isPending}
-                            onClick={p.cancelEditingDeductions}
-                          >
-                            Cancel
-                          </Button>
-                        </div>
-                      </div>
-                    ) : null}
-                  </li>
-                )
-              })}
-            </ul>
+            <IncomeProfilePeriodList {...p} />
           )}
         </CardContent>
       </Card>

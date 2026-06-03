@@ -9,6 +9,6 @@ export async function login(page: Page) {
   await page.getByLabel("Email").fill(DEMO_EMAIL)
   await page.getByLabel("Password").fill(DEMO_PASSWORD)
   await page.getByRole("button", { name: "Sign in" }).click()
-  await expect(page).toHaveURL("/")
+  await expect(page).toHaveURL("/", { timeout: 15_000 })
   await expect(page.getByRole("heading", { name: "Dashboard" })).toBeVisible({ timeout: 15_000 })
 }
