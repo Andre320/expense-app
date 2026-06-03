@@ -41,6 +41,7 @@ export type MockPrismaModels = Partial<{
   transactionTag: MockModelMethods
   tag: MockModelMethods
   incomeBonus: MockModelMethods
+  incomeProfile: MockModelMethods
   savingsGoal: MockModelMethods
   savingsAccount: MockModelMethods
   savingsAccountMovement: MockModelMethods

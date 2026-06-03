@@ -41,6 +41,7 @@ model User {
   accounts       Account[]
   sessions       Session[]
   appSettings    AppSettings?
+  incomeProfiles IncomeProfile[]
   incomeBonuses  IncomeBonus[]
   categories     Category[]
   knownStores    KnownStore[]
@@ -107,6 +108,32 @@ model AppSettings {
   crEsppPct Decimal @default(0)
 
   updatedAt DateTime @updatedAt
+}
+
+/// Dated salary profile — supports promotions and historical planning accuracy.
+model IncomeProfile {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  label         String   @default("Salary")
+  effectiveFrom DateTime
+  /// null = open-ended (current)
+  effectiveTo   DateTime?
+
+  crSalaryGross    Decimal
+  crSalaryCurrency String  @default("CRC")
+  crPayPeriod      String  @default("MONTHLY")
+  crSolidaristaPct Decimal @default(0)
+  crPensionComplementariaPct Decimal @default(0)
+  crEsppPct Decimal @default(0)
+
+  position  Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([userId, effectiveFrom])
 }
 
 /// Fixed gross bonus that repeats in selected calendar months every year.

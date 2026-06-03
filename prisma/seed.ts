@@ -15,7 +15,7 @@ async function seedUserData(userId: string) {
   await prisma.appSettings.update({
     where: { userId },
     data: {
-      crSalaryGross: "850000",
+      crSalaryGross: "920000",
       crSalaryCurrency: "CRC",
       crPayPeriod: "MONTHLY",
       crCrcPerUsd: "505",
@@ -24,6 +24,32 @@ async function seedUserData(userId: string) {
       crEsppPct: "0",
     },
   })
+
+  if ((await prisma.incomeProfile.count({ where: { userId } })) <= 1) {
+    const existing = await prisma.incomeProfile.findFirst({ where: { userId } })
+    if (existing) {
+      await prisma.incomeProfile.update({
+        where: { id: existing.id },
+        data: {
+          label: "2024 base",
+          effectiveFrom: new Date("2024-01-01"),
+          effectiveTo: new Date("2024-12-31"),
+          crSalaryGross: "850000",
+        },
+      })
+      await prisma.incomeProfile.create({
+        data: {
+          userId,
+          label: "2025 promotion",
+          effectiveFrom: new Date("2025-01-01"),
+          crSalaryGross: "920000",
+          crSalaryCurrency: "CRC",
+          crPayPeriod: "MONTHLY",
+          position: 2,
+        },
+      })
+    }
+  }
 
   if ((await prisma.savingsGoal.count({ where: { userId } })) === 0) {
     const goal = await prisma.savingsGoal.create({

@@ -153,6 +153,7 @@ export function useIncomePlannerForm({
     onSuccess: () => {
       toast.success("Saved salary profile")
       qc.invalidateQueries({ queryKey: ["settings"] })
+      qc.invalidateQueries({ queryKey: ["income-profiles"] })
       qc.invalidateQueries({ queryKey: ["analytics", "summary"] })
     },
     onError: (e: Error) => toast.error(e.message),

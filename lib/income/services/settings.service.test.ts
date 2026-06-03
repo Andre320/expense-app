@@ -22,10 +22,34 @@ describe("settings.service", () => {
     updatedAt: new Date("2026-05-01T00:00:00.000Z"),
   }
 
+  const openProfile = {
+    id: "prof-1",
+    userId,
+    label: "Salary",
+    effectiveFrom: new Date("2024-01-01"),
+    effectiveTo: null,
+    crSalaryGross: "1000000",
+    crSalaryCurrency: "CRC",
+    crPayPeriod: "MONTHLY",
+    crSolidaristaPct: "0",
+    crPensionComplementariaPct: "0",
+    crEsppPct: "0",
+    position: 1,
+    createdAt: new Date(),
+    updatedAt: new Date(),
+  }
+
   beforeEach(() => {
+    ensureModel(prisma, "incomeProfile").count!.mockResolvedValue(1)
+    ensureModel(prisma, "incomeProfile").findMany!.mockResolvedValue([openProfile])
     ensureModel(prisma, "appSettings").findUniqueOrThrow!.mockResolvedValue(baseSettings)
+    ensureModel(prisma, "appSettings").findUnique!.mockResolvedValue(baseSettings)
     ensureModel(prisma, "appSettings").update!.mockResolvedValue({
       ...baseSettings,
+      crSalaryGross: "2000000",
+    })
+    ensureModel(prisma, "incomeProfile").update!.mockResolvedValue({
+      ...openProfile,
       crSalaryGross: "2000000",
     })
   })
@@ -36,50 +60,41 @@ describe("settings.service", () => {
     expect(result.crCrcPerUsd).toBe(505)
   })
 
-  it("patchSerializedSettings updates provided fields only", async () => {
+  it("patchSerializedSettings updates salary on current profile", async () => {
     const result = await patchSerializedSettings(prisma, userId, {
       crSalaryGross: 2000000,
     })
 
-    expect(prisma.appSettings.update).toHaveBeenCalledWith({
-      where: { userId },
-      data: { crSalaryGross: "2000000" },
-    })
+    expect(prisma.incomeProfile.update).toHaveBeenCalled()
     expect(result.crSalaryGross).toBe(2000000)
   })
 
-  it("patchSerializedSettings can update every salary profile field", async () => {
-    ensureModel(prisma, "appSettings").update!.mockResolvedValue({
-      ...baseSettings,
-      crSalaryCurrency: "USD",
-      crPayPeriod: "BIWEEKLY",
-      crCrcPerUsd: "510",
-      crSolidaristaPct: "1",
-      crPensionComplementariaPct: "2",
-      crEsppPct: "3",
-    })
-
+  it("patchSerializedSettings updates all salary fields on profile", async () => {
+    ensureModel(prisma, "appSettings").update!.mockResolvedValue(baseSettings)
     await patchSerializedSettings(prisma, userId, {
       crSalaryGross: 2000000,
       crSalaryCurrency: "USD",
       crPayPeriod: "BIWEEKLY",
-      crCrcPerUsd: 510,
       crSolidaristaPct: 1,
       crPensionComplementariaPct: 2,
       crEsppPct: 3,
     })
+    expect(prisma.incomeProfile.update).toHaveBeenCalled()
+  })
+
+  it("patchSerializedSettings updates crc rate on app settings only", async () => {
+    ensureModel(prisma, "appSettings").update!.mockResolvedValue({
+      ...baseSettings,
+      crCrcPerUsd: "510",
+    })
+
+    await patchSerializedSettings(prisma, userId, {
+      crCrcPerUsd: 510,
+    })
 
     expect(prisma.appSettings.update).toHaveBeenCalledWith({
       where: { userId },
-      data: {
-        crSalaryGross: "2000000",
-        crSalaryCurrency: "USD",
-        crPayPeriod: "BIWEEKLY",
-        crCrcPerUsd: "510",
-        crSolidaristaPct: "1",
-        crPensionComplementariaPct: "2",
-        crEsppPct: "3",
-      },
+      data: { crCrcPerUsd: "510" },
     })
   })
 })

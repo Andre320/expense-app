@@ -4,6 +4,7 @@ import * as React from "react"
 import Link from "next/link"
 import { useQuery } from "@tanstack/react-query"
 import { IncomeBonusesManager } from "@/components/features/income/income-bonuses-manager"
+import { IncomeProfilesManager } from "@/components/features/income/income-profiles-manager"
 import type { IncomeBonusDto } from "@/components/features/income/income-bonuses-manager"
 import { IncomePlannerPanel } from "@/components/features/income/income-planner-panel"
 import { IncomeSurplusSidebar } from "@/components/features/income/income-surplus-sidebar"
@@ -76,6 +77,8 @@ export default function IncomePage() {
 
       <div className="grid gap-10 xl:grid-cols-[1fr_minmax(280px,360px)]">
         <div className="space-y-10">
+          <IncomeProfilesManager />
+          <Separator className="bg-border" />
           <IncomePlannerPanel
             compactNav
             bonuses={bonuses ?? []}

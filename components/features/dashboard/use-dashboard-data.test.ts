@@ -7,8 +7,8 @@ import type { SavingsGoalForecastInput } from "@/lib/planning/forecast-planning"
 
 const base: DashboardSummary = {
   monthly: [
-    { month: "2025-03", income: 1000, expense: 600 },
-    { month: "2025-04", income: 1100, expense: 700 },
+    { month: "2025-03", incomeLedger: 500, plannedIncome: 1000, expense: 600 },
+    { month: "2025-04", incomeLedger: 0, plannedIncome: 1100, expense: 700 },
   ],
   burnRate3Mo: 650,
   savingsTotal: 5000,
@@ -25,7 +25,7 @@ describe("deriveDashboardData", () => {
   it("derives chart labels and net for last month", () => {
     const d = deriveDashboardData(base, undefined)
     expect(d.chartData[1]!.label).toBe("04")
-    expect(d.netLast).toBe(400)
+    expect(d.netLast).toBe(400) // planned 1100 - expense 700
     expect(d.surplus).toBe(350)
     expect(d.monthLabel).toBe("Abr")
     expect(d.bonusNames).toEqual(["Easter"])

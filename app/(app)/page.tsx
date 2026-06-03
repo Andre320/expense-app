@@ -159,7 +159,11 @@ export default function DashboardPage() {
         </Card>
       </div>
 
-      <DashboardMonthlyChart chartData={chartData} baseCurrency={baseCurrency} />
+      <DashboardMonthlyChart
+        chartData={chartData}
+        baseCurrency={baseCurrency}
+        hasSalaryProfile={data.hasSalaryProfile}
+      />
     </div>
   )
 }

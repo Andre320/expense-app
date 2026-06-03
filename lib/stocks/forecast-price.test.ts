@@ -115,4 +115,22 @@ describe("forecast-price", () => {
     const base = priceScenarioAtDate(forecast, target, "base")
     expect(base).toBe(priceAtDate(forecast, target))
   })
+
+  it("priceScenarioAtDate scales bear and bull from base", () => {
+    const forecast = buildStockForecast(risingBars(12), HOLT_BY_RANGE.month)!
+    const target = new Date(forecast.lastDate)
+    target.setDate(target.getDate() + 2)
+    const base = priceScenarioAtDate(forecast, target, "base")!
+    const bear = priceScenarioAtDate(forecast, target, "bear")!
+    const bull = priceScenarioAtDate(forecast, target, "bull")!
+    expect(bear).toBeLessThan(base)
+    expect(bull).toBeGreaterThan(base)
+  })
+
+  it("priceAtDate uses history before first bar", () => {
+    const forecast = buildStockForecast(risingBars(12), HOLT_BY_RANGE.month)!
+    const first = new Date(forecast.points.find((p) => p.kind === "history")!.date)
+    first.setFullYear(first.getFullYear() - 1)
+    expect(priceAtDate(forecast, first)).not.toBeNull()
+  })
 })

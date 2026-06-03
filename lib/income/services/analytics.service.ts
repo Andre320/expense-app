@@ -4,7 +4,17 @@ import { subMonths, startOfMonth, format } from "date-fns"
 import type { PrismaClient } from "@/app/generated/prisma/client"
 import { REPORTING_CURRENCY } from "@/lib/shared/app-currency"
 import { roundMoney, amountToReportingBase } from "@/lib/shared/currency"
+import {
+  getProfileForMonth,
+  hasSalaryProfile,
+  plannedNetForCalendarMonth,
+} from "@/lib/income/income-profile-period"
 import { computeExpectedNetForCurrentMonth } from "@/lib/income/profile"
+import type { IncomeBonusRow } from "@/lib/income/profile"
+import {
+  ensureIncomeProfilesFromSettings,
+  listIncomeProfileRows,
+} from "@/lib/income/services/income-profile.service"
 import { numFromDecimal } from "@/lib/shared/utils"
 
 export type ActiveBonusSummary = {
@@ -12,8 +22,17 @@ export type ActiveBonusSummary = {
   grossAmountCrc: number
 }
 
+export type MonthlyAnalyticsPoint = {
+  month: string
+  /** Ledger INCOME transactions in reporting currency */
+  incomeLedger: number
+  /** Planned net salary from active income profile for that month */
+  plannedIncome: number
+  expense: number
+}
+
 export type AnalyticsSummaryPayload = {
-  monthly: { month: string; income: number; expense: number }[]
+  monthly: MonthlyAnalyticsPoint[]
   burnRate3Mo: number
   savingsTotal: number
   savingsAccountsTotal: number
@@ -29,10 +48,28 @@ export type AnalyticsSummaryPayload = {
   }
 }
 
+function bonusRowsFromDb(
+  bonuses: {
+    name: string
+    grossAmount: unknown
+    grossCurrency: string
+    months: string
+  }[],
+): IncomeBonusRow[] {
+  return bonuses.map((b) => ({
+    name: b.name,
+    grossAmount: b.grossAmount,
+    grossCurrency: b.grossCurrency,
+    months: b.months,
+  }))
+}
+
 export async function getAnalyticsSummary(
   prisma: PrismaClient,
   userId: string,
 ): Promise<AnalyticsSummaryPayload> {
+  await ensureIncomeProfilesFromSettings(prisma, userId)
+
   const settings = await prisma.appSettings.findUniqueOrThrow({
     where: { userId },
   })
@@ -41,6 +78,9 @@ export async function getAnalyticsSummary(
     where: { userId },
     orderBy: [{ position: "asc" }, { name: "asc" }],
   })
+  const bonusRows = bonusRowsFromDb(bonuses)
+
+  const profiles = await listIncomeProfileRows(prisma, userId)
 
   const since = startOfMonth(subMonths(new Date(), 11))
   const txs = await prisma.transaction.findMany({
@@ -57,9 +97,9 @@ export async function getAnalyticsSummary(
     monthKeys.push(format(startOfMonth(subMonths(new Date(), i)), "yyyy-MM"))
   }
 
-  const buckets = new Map<string, { income: number; expense: number }>()
+  const buckets = new Map<string, { incomeLedger: number; expense: number }>()
   for (const k of monthKeys) {
-    buckets.set(k, { income: 0, expense: 0 })
+    buckets.set(k, { incomeLedger: 0, expense: 0 })
   }
 
   for (const t of txs) {
@@ -67,14 +107,26 @@ export async function getAnalyticsSummary(
     if (!buckets.has(key)) continue
     const b = buckets.get(key)!
     const amt = numFromDecimal(t.amountBase)
-    if (t.kind === "INCOME") b.income += amt
+    if (t.kind === "INCOME") b.incomeLedger += amt
     else b.expense += amt
   }
 
-  const monthly = monthKeys.map((month) => ({
-    month,
-    ...buckets.get(month)!,
-  }))
+  const monthly = monthKeys.map((month) => {
+    const bucket = buckets.get(month)!
+    const profile = getProfileForMonth(profiles, month)
+    const plannedIncome = plannedNetForCalendarMonth(
+      profile,
+      settings.crCrcPerUsd,
+      bonusRows,
+      month,
+    )
+    return {
+      month,
+      incomeLedger: bucket.incomeLedger,
+      plannedIncome,
+      expense: bucket.expense,
+    }
+  })
 
   const last3 = monthly.slice(-3)
   const burnRate = last3.length > 0 ? last3.reduce((s, m) => s + m.expense, 0) / last3.length : 0
@@ -113,8 +165,20 @@ export async function getAnalyticsSummary(
     else ledgerNetBalance -= amt
   }
 
-  const gross = numFromDecimal(settings.crSalaryGross)
-  const incomeForecast = computeExpectedNetForCurrentMonth(settings, bonuses)
+  const currentProfile = getProfileForMonth(profiles, format(new Date(), "yyyy-MM"))
+  const settingsForForecast = currentProfile
+    ? {
+        crSalaryGross: currentProfile.crSalaryGross,
+        crSalaryCurrency: currentProfile.crSalaryCurrency,
+        crPayPeriod: currentProfile.crPayPeriod,
+        crCrcPerUsd: settings.crCrcPerUsd,
+        crSolidaristaPct: currentProfile.crSolidaristaPct,
+        crPensionComplementariaPct: currentProfile.crPensionComplementariaPct,
+        crEsppPct: currentProfile.crEsppPct,
+      }
+    : settings
+
+  const incomeForecast = computeExpectedNetForCurrentMonth(settingsForForecast, bonusRows)
 
   return {
     monthly,
@@ -123,7 +187,7 @@ export async function getAnalyticsSummary(
     savingsAccountsTotal,
     expectedMonthlyIncomeBase: incomeForecast.expectedNetCrc,
     ledgerNetBalance: roundMoney(ledgerNetBalance),
-    hasSalaryProfile: gross > 0,
+    hasSalaryProfile: hasSalaryProfile(profiles),
     reportingCurrency: REPORTING_CURRENCY,
     forecastCalendarMonth: incomeForecast.calendarMonth,
     bonusGrossThisMonth: incomeForecast.bonusGrossCrc,

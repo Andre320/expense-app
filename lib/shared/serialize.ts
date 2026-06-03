@@ -1,6 +1,7 @@
 import type {
   Category,
   IncomeBonus,
+  IncomeProfile,
   RsuPlan,
   RsuVest,
   SavingsAccount,
@@ -79,6 +80,24 @@ export function serializeSavings(g: SavingsGoal) {
     priorityOrder: g.priorityOrder,
     createdAt: g.createdAt.toISOString(),
     updatedAt: g.updatedAt.toISOString(),
+  }
+}
+
+export function serializeIncomeProfile(p: IncomeProfile) {
+  return {
+    id: p.id,
+    label: p.label,
+    effectiveFrom: p.effectiveFrom.toISOString().slice(0, 10),
+    effectiveTo: p.effectiveTo ? p.effectiveTo.toISOString().slice(0, 10) : null,
+    crSalaryGross: numFromDecimal(p.crSalaryGross),
+    crSalaryCurrency: p.crSalaryCurrency,
+    crPayPeriod: p.crPayPeriod,
+    crSolidaristaPct: numFromDecimal(p.crSolidaristaPct),
+    crPensionComplementariaPct: numFromDecimal(p.crPensionComplementariaPct),
+    crEsppPct: numFromDecimal(p.crEsppPct),
+    position: p.position,
+    createdAt: p.createdAt.toISOString(),
+    updatedAt: p.updatedAt.toISOString(),
   }
 }
 

@@ -9,6 +9,16 @@ describe("ensureUserDefaults", () => {
     vi.clearAllMocks()
     ensureModel(prisma, "appSettings").upsert!.mockResolvedValue({})
     ensureModel(prisma, "category").upsert!.mockResolvedValue({})
+    ensureModel(prisma, "incomeProfile").count!.mockResolvedValue(1)
+    ensureModel(prisma, "appSettings").findUnique!.mockResolvedValue({
+      userId: "user-1",
+      crSalaryGross: "0",
+      crSalaryCurrency: "CRC",
+      crPayPeriod: "MONTHLY",
+      crSolidaristaPct: "0",
+      crPensionComplementariaPct: "0",
+      crEsppPct: "0",
+    })
   })
 
   it("creates default app settings", async () => {

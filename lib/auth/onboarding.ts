@@ -2,6 +2,7 @@ import "server-only"
 
 import type { PrismaClient } from "@/app/generated/prisma/client"
 import { prisma as defaultPrisma } from "@/lib/db/client"
+import { ensureIncomeProfilesFromSettings } from "@/lib/income/services/income-profile.service"
 
 const DEFAULT_CATEGORIES = [
   { name: "Salary", kind: "INCOME" as const, position: 1, color: "#22d3ee" },
@@ -24,6 +25,8 @@ export async function ensureUserDefaults(userId: string, prisma: PrismaClient = 
     create: { userId },
     update: {},
   })
+
+  await ensureIncomeProfilesFromSettings(prisma, userId)
 
   for (const c of DEFAULT_CATEGORIES) {
     await prisma.category.upsert({
