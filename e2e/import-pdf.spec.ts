@@ -6,7 +6,7 @@ import { login } from "./fixtures/auth"
 const bacSamplePdf = path.join(process.cwd(), "e2e", "fixtures", "bac-sample.pdf")
 
 test.describe("BAC PDF import", () => {
-  test("upload BAC PDF on /import shows preview or success", async ({ page }) => {
+  test("upload BAC PDF on /activity shows preview table", async ({ page }) => {
     await login(page)
     await page.goto("/activity")
 
@@ -14,13 +14,23 @@ test.describe("BAC PDF import", () => {
     await page.getByRole("tab", { name: "PDF" }).click()
     await expect(page.getByText("BAC statement (PDF)")).toBeVisible()
 
+    const bacResponse = page.waitForResponse(
+      (res) =>
+        res.url().includes("/api/import/pdf/bac") && res.request().method() === "POST" && res.ok(),
+    )
     await page.locator("#pdf-bac").setInputFiles(bacSamplePdf)
+    const response = await bacResponse
+    const payload = (await response.json()) as {
+      transactions: { reference: string; bankDescription: string }[]
+    }
 
-    await expect(page.getByText("Parsed 1 purchase(s)").or(page.getByText("Preview"))).toBeVisible({
-      timeout: 20_000,
-    })
+    expect(payload.transactions).toHaveLength(1)
+    expect(payload.transactions[0]?.reference).toBe("12345678901")
+    expect(payload.transactions[0]?.bankDescription).toContain("SUPERMARKET")
 
-    await expect(page.getByRole("cell", { name: "12345678901" })).toBeVisible()
-    await expect(page.getByRole("cell", { name: /SUPERMARKET/ })).toBeVisible()
+    const preview = page.locator("#import-workspace")
+    await expect(preview.getByText("12345678901")).toBeVisible({ timeout: 20_000 })
+    await expect(preview.getByText(/SUPERMARKET/)).toBeVisible({ timeout: 20_000 })
+    await expect(preview.getByRole("button", { name: "Save to ledger" })).toBeVisible()
   })
 })
