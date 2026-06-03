@@ -16,9 +16,9 @@ test.describe("BAC PDF import", () => {
 
     await page.locator("#pdf-bac").setInputFiles(bacSamplePdf)
 
-    await expect(
-      page.getByText("Parsed 1 purchase(s)").or(page.getByText("Preview")),
-    ).toBeVisible({ timeout: 20_000 })
+    await expect(page.getByText("Parsed 1 purchase(s)").or(page.getByText("Preview"))).toBeVisible({
+      timeout: 20_000,
+    })
 
     await expect(page.getByRole("cell", { name: "12345678901" })).toBeVisible()
     await expect(page.getByRole("cell", { name: /SUPERMARKET/ })).toBeVisible()
