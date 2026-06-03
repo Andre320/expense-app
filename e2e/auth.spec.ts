@@ -21,6 +21,6 @@ test.describe("auth", () => {
 
   test("authenticated session loads dashboard via helper", async ({ page }) => {
     await login(page)
-    await expect(page.getByRole("link", { name: "Income" })).toBeVisible()
+    await expect(page.locator('a[data-sidebar="menu-button"][href="/income"]')).toBeVisible()
   })
 })
