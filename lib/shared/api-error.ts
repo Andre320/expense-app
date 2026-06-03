@@ -30,7 +30,7 @@ export function validationErrorResponse(zodError: ZodError, options?: { includeF
     const flat = zodError.flatten()
     const fields: Record<string, string[]> = {}
     for (const [key, msgs] of Object.entries(flat.fieldErrors)) {
-      if (msgs?.length) fields[key] = msgs
+      if (Array.isArray(msgs) && msgs.length > 0) fields[key] = msgs
     }
     return NextResponse.json({ error: message, fields }, { status: 400 })
   }

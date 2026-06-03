@@ -151,6 +151,22 @@ describe("parseBCompraLine", () => {
 })
 
 describe("parseBacComprasDelPeriodo", () => {
+  it("parses purchase lines as extracted from the e2e pdf-lib fixture", () => {
+    const full = [
+      "B) Detalle de compras del periodo",
+      "Encabezado",
+      "Precios en colones y dólares",
+      "12345678901 15-ENE-25 SUPERMARKET CHAIN CRC 5,000",
+      "",
+      "-- 1 of 1 --",
+      "",
+    ].join("\n")
+    const rows = parseBacComprasDelPeriodo(full)
+    expect(rows).toHaveLength(1)
+    expect(rows[0]!.reference).toBe("12345678901")
+    expect(rows[0]!.description).toBe("SUPERMARKET CHAIN")
+  })
+
   it("deduplicates identical purchase keys", () => {
     const full = syntheticSection(`
 12345678901 15-ENE-25 DUP    CRC 100

@@ -81,10 +81,11 @@ Reference: [`app/api/categories/route.ts`](app/api/categories/route.ts) + [`lib/
 - Vitest: **unit** project (`node`) + **ui** project (`jsdom`); helpers in `components/test/`
 - Vitest shim: `lib/test/shims/server-only.ts`
 - **Coverage gate (`pnpm check`):** **≥95%** on `lib/**/*.ts` (`lib/db/client.ts` excluded)
-- **Product coverage (report only):** `pnpm test:coverage:product` — `lib/` + `components/features|patterns|shell` (target **95% overall**; see [`docs/plans/ui-coverage-and-e2e.plan.md`](docs/plans/ui-coverage-and-e2e.plan.md))
-- **E2E:** `pnpm test:e2e` — Playwright (`e2e/`); not in `pnpm check` (needs Docker + `db:setup`)
-- **Error handling:** [`docs/plans/error-handling.plan.md`](docs/plans/error-handling.plan.md) — see below
-- **Architecture audit:** [`docs/plans/industry-standards-audit.md`](docs/plans/industry-standards-audit.md) — what applies vs N/A for this stack
+- **Product coverage (report only):** `pnpm test:coverage:product` — `lib/` + `components/features|patterns|shell` (grow toward 95%; no CI gate)
+- **E2E:** `pnpm test:e2e` — Playwright (`e2e/`); BAC fixture at `e2e/fixtures/bac-sample.pdf`; optional non-blocking CI in `.github/workflows/e2e.yml`
+- **Integration:** `pnpm test:integration` — `*.integration.test.ts` (Postgres; runs in CI after migrate)
+- **Error handling:** see below
+- **Architecture:** Route Handlers + `lib/**/services/` (no Server Actions); savings goals use `goal.service.ts` like categories
 
 ### Error handling
 

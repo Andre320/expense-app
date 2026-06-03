@@ -10,6 +10,9 @@ for (const key of ["DATABASE_URL", "AUTH_SECRET", "AUTH_URL"] as const) {
 if (!webEnv.AUTH_SECRET) {
   webEnv.AUTH_SECRET = "e2e-test-auth-secret-not-for-production"
 }
+if (!webEnv.AUTH_URL) {
+  webEnv.AUTH_URL = "http://localhost:3000"
+}
 
 export default defineConfig({
   testDir: "e2e",

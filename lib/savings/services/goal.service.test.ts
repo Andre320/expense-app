@@ -1,6 +1,16 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
-import { createSavingsGoal, listSerializedSavingsGoals } from "@/lib/savings/services/goal.service"
+import { applySavingsGoalMovement } from "@/lib/savings/services/movement.service"
+import {
+  createSavingsGoal,
+  deleteSavingsGoal,
+  listSerializedSavingsGoals,
+  updateSavingsGoal,
+} from "@/lib/savings/services/goal.service"
 import { createMockPrisma, ensureModel } from "@/lib/test/fixtures/prisma-mock"
+
+vi.mock("@/lib/savings/services/movement.service", () => ({
+  applySavingsGoalMovement: vi.fn().mockResolvedValue({}),
+}))
 
 describe("goal.service", () => {
   const prisma = createMockPrisma()
@@ -23,6 +33,9 @@ describe("goal.service", () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    ensureModel(prisma, "savingsGoal").findFirst!.mockResolvedValue(goalRow)
+    ensureModel(prisma, "savingsGoal").update!.mockResolvedValue(goalRow)
+    ensureModel(prisma, "savingsGoal").delete!.mockResolvedValue(goalRow)
     ensureModel(prisma, "savingsGoal").findMany!.mockResolvedValue([goalRow])
     ensureModel(prisma, "savingsGoal").aggregate!.mockResolvedValue({ _max: { priorityOrder: 1 } })
     ensureModel(prisma, "savingsGoal").create!.mockResolvedValue(goalRow)
@@ -95,6 +108,79 @@ describe("goal.service", () => {
     expect(prisma.savingsGoal.create).toHaveBeenCalledWith(
       expect.objectContaining({ data: expect.objectContaining({ priorityOrder: 9 }) }),
     )
+  })
+
+  it("updates owned goal fields", async () => {
+    const updated = await updateSavingsGoal(prisma, userId, "goal-1", { name: "Trip" })
+    expect(updated.name).toBe("Vacation")
+    expect(prisma.savingsGoal.update).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ name: "Trip" }) }),
+    )
+  })
+
+  it("clears target and updates optional metadata", async () => {
+    await updateSavingsGoal(prisma, userId, "goal-1", {
+      targetAmount: null,
+      priorityOrder: 3,
+      color: "#000",
+      notes: "note",
+    })
+    expect(prisma.savingsGoal.update).toHaveBeenCalledWith({
+      where: { id: "goal-1" },
+      data: {
+        targetAmount: null,
+        priorityOrder: 3,
+        color: "#000",
+        notes: "note",
+      },
+    })
+  })
+
+  it("stringifies numeric targetAmount on update", async () => {
+    await updateSavingsGoal(prisma, userId, "goal-1", { targetAmount: 250000 })
+    expect(prisma.savingsGoal.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({ targetAmount: "250000" }),
+      }),
+    )
+  })
+
+  it("throws when updating missing goal", async () => {
+    ensureModel(prisma, "savingsGoal").findFirst!.mockResolvedValue(null)
+    await expect(updateSavingsGoal(prisma, userId, "missing", { name: "X" })).rejects.toThrow(
+      "Not found",
+    )
+  })
+
+  it("applies adjustment movement when currentAmount changes", async () => {
+    await updateSavingsGoal(prisma, userId, "goal-1", { currentAmount: 20000 })
+    expect(applySavingsGoalMovement).toHaveBeenCalledWith(prisma, userId, "goal-1", {
+      kind: "ADJUSTMENT",
+      amount: 20000,
+      description: "Balance correction",
+    })
+  })
+
+  it("skips movement when currentAmount is unchanged", async () => {
+    await updateSavingsGoal(prisma, userId, "goal-1", { currentAmount: 10000 })
+    expect(applySavingsGoalMovement).not.toHaveBeenCalled()
+  })
+
+  it("throws not found when goal update fails in database", async () => {
+    ensureModel(prisma, "savingsGoal").update!.mockRejectedValue(new Error("db"))
+    await expect(updateSavingsGoal(prisma, userId, "goal-1", { name: "Trip" })).rejects.toThrow(
+      "Not found",
+    )
+  })
+
+  it("deletes owned goal", async () => {
+    await deleteSavingsGoal(prisma, userId, "goal-1")
+    expect(prisma.savingsGoal.delete).toHaveBeenCalledWith({ where: { id: "goal-1" } })
+  })
+
+  it("throws when deleting missing goal", async () => {
+    ensureModel(prisma, "savingsGoal").findFirst!.mockResolvedValue(null)
+    await expect(deleteSavingsGoal(prisma, userId, "missing")).rejects.toThrow("Not found")
   })
 
   it("creates goal without opening movement when amount is zero", async () => {

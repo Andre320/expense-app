@@ -50,6 +50,17 @@ export default defineConfig({
       },
       {
         extends: true,
+        resolve: { alias: resolveAlias },
+        test: {
+          name: "integration",
+          environment: "node",
+          setupFiles: ["lib/test/setup.ts"],
+          include: ["lib/**/*.integration.test.ts"],
+          exclude: ["node_modules", ".next", "**/generated/**"],
+        },
+      },
+      {
+        extends: true,
         plugins: [react()],
         resolve: { alias: resolveAlias },
         test: {
