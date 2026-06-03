@@ -99,7 +99,8 @@ async function seedUserData(userId: string) {
         name: "Aguinaldo (example)",
         grossAmount: "200000",
         grossCurrency: "CRC",
-        months: "[12]",
+        paidOn: new Date(`${new Date().getFullYear()}-12-01`),
+        repeatsAnnually: true,
         position: 1,
       },
     })

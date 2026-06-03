@@ -48,6 +48,32 @@ describe("income-profile-period", () => {
     expect(net).toBeGreaterThan(0)
   })
 
+  it("applies Solidarista/ESPP/taxes to older periods via deduction fallback", () => {
+    const currentWithDeductions = {
+      ...raisedProfile,
+      crSolidaristaPct: 5,
+      crPensionComplementariaPct: 2,
+      crEsppPct: 10,
+    }
+    const profiles = [baseProfile, currentWithDeductions]
+    const withoutFallback = plannedNetForCalendarMonth(
+      baseProfile,
+      505,
+      [],
+      "2024-06",
+    )
+    const withFallback = plannedNetForCalendarMonth(
+      baseProfile,
+      505,
+      [],
+      "2024-06",
+      profiles,
+      null,
+    )
+    expect(withFallback).toBeLessThan(withoutFallback)
+    expect(withFallback).toBeGreaterThan(0)
+  })
+
   it("reports overlap between intervals", () => {
     const err = findProfileOverlap([baseProfile], new Date("2024-06-01"), new Date("2025-06-01"))
     expect(err?.code).toBe("OVERLAP")

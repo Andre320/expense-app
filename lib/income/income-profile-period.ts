@@ -1,5 +1,9 @@
 import { endOfDay, endOfMonth, parseISO, startOfDay, startOfMonth } from "date-fns"
-import type { IncomeProfileSettings } from "@/lib/income/profile"
+import {
+  pickDeductionFallback,
+  profileToSettingsWithDeductions,
+  type VoluntaryDeductionPct,
+} from "@/lib/income/income-profile-deductions"
 import { computeExpectedNetForMonth } from "@/lib/income/profile"
 import type { IncomeBonusRow } from "@/lib/income/profile"
 import { numFromDecimal } from "@/lib/shared/decimal"
@@ -46,33 +50,23 @@ export function getProfileForMonth(
   return active.sort((a, b) => b.effectiveFrom.getTime() - a.effectiveFrom.getTime())[0]!
 }
 
-export function profileToSettingsSlice(
-  profile: IncomeProfileRow,
-  crcPerUsd: unknown,
-): IncomeProfileSettings {
-  return {
-    crSalaryGross: profile.crSalaryGross,
-    crSalaryCurrency: profile.crSalaryCurrency,
-    crPayPeriod: profile.crPayPeriod,
-    crCrcPerUsd: crcPerUsd,
-    crSolidaristaPct: profile.crSolidaristaPct,
-    crPensionComplementariaPct: profile.crPensionComplementariaPct,
-    crEsppPct: profile.crEsppPct,
-  }
-}
-
 export function plannedNetForCalendarMonth(
   profile: IncomeProfileRow | null,
   crcPerUsd: unknown,
   bonuses: IncomeBonusRow[],
   yyyyMm: string,
+  allProfiles: IncomeProfileRow[] = [],
+  settingsFallback: VoluntaryDeductionPct | null = null,
 ): number {
   if (!profile) return 0
   const month = Number.parseInt(yyyyMm.slice(5, 7), 10)
   if (month < 1 || month > 12) return 0
-  const settings = profileToSettingsSlice(profile, crcPerUsd)
-  return computeExpectedNetForMonth(settings, bonuses, month).expectedNetCrc
+  const deductionFallback = pickDeductionFallback(allProfiles, settingsFallback)
+  const settings = profileToSettingsWithDeductions(profile, crcPerUsd, deductionFallback)
+  return computeExpectedNetForMonth(settings, bonuses, yyyyMm).expectedNetCrc
 }
+
+export type { VoluntaryDeductionPct }
 
 function intervalEnd(d: Date | null): Date {
   return d ? endOfDay(d) : new Date(8640000000000000)

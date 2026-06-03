@@ -11,7 +11,6 @@ import type {
   Tag,
   Transaction,
 } from "@/app/generated/prisma/client"
-import { parseBonusMonths } from "@/lib/income/bonus"
 import { numFromDecimal } from "@/lib/shared/decimal"
 
 export function serializeTransaction(
@@ -107,7 +106,8 @@ export function serializeIncomeBonus(b: IncomeBonus) {
     name: b.name,
     grossAmount: numFromDecimal(b.grossAmount),
     grossCurrency: b.grossCurrency,
-    months: parseBonusMonths(b.months),
+    paidOn: b.paidOn.toISOString().slice(0, 10),
+    repeatsAnnually: b.repeatsAnnually,
     position: b.position,
     createdAt: b.createdAt.toISOString(),
     updatedAt: b.updatedAt.toISOString(),

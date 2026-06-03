@@ -1,35 +1,9 @@
 import { describe, expect, it } from "vitest"
 import {
-  bonusAppliesInMonth,
-  bonusGrossForMonth,
+  bonusAppliesInCalendarMonth,
+  bonusGrossForCalendarMonth,
   bonusGrossToMonthlyCrc,
-  parseBonusMonths,
-  stringifyBonusMonths,
 } from "@/lib/income/bonus"
-
-describe("parseBonusMonths", () => {
-  it("parses valid JSON month array", () => {
-    expect(parseBonusMonths("[3,12]")).toEqual([3, 12])
-  })
-
-  it("returns empty for invalid JSON", () => {
-    expect(parseBonusMonths("not-json")).toEqual([])
-  })
-
-  it("returns empty when JSON is not an array", () => {
-    expect(parseBonusMonths('{"months":3}')).toEqual([])
-  })
-
-  it("filters invalid month numbers", () => {
-    expect(parseBonusMonths("[0,13,5]")).toEqual([5])
-  })
-})
-
-describe("stringifyBonusMonths", () => {
-  it("deduplicates and sorts", () => {
-    expect(stringifyBonusMonths([12, 3, 3])).toBe("[3,12]")
-  })
-})
 
 describe("bonusGrossToMonthlyCrc", () => {
   it("converts USD gross using crc per usd", () => {
@@ -43,29 +17,38 @@ describe("bonusGrossToMonthlyCrc", () => {
   })
 })
 
-describe("bonusGrossForMonth", () => {
+describe("bonusGrossForCalendarMonth", () => {
   const bonuses = [
     {
-      name: "Q1",
+      name: "2024 Aguinaldo",
       grossAmount: 100_000,
       grossCurrency: "CRC",
-      months: [3],
+      paidOn: "2024-12-01",
+      repeatsAnnually: false,
     },
     {
-      name: "Q3",
-      grossAmount: 100_000,
+      name: "Productivity",
+      grossAmount: 50_000,
       grossCurrency: "CRC",
-      months: [9],
+      paidOn: "2025-03-15",
+      repeatsAnnually: true,
     },
   ]
 
-  it("sums only bonuses for the given month", () => {
-    expect(bonusGrossForMonth(bonuses, 3, 505)).toBe(100_000)
-    expect(bonusGrossForMonth(bonuses, 4, 505)).toBe(0)
+  it("applies one-off bonus only in that year-month", () => {
+    expect(bonusGrossForCalendarMonth(bonuses, "2024-12", 505)).toBe(100_000)
+    expect(bonusGrossForCalendarMonth(bonuses, "2025-12", 505)).toBe(0)
   })
 
-  it("bonusAppliesInMonth checks membership", () => {
-    expect(bonusAppliesInMonth(bonuses[0]!, 3)).toBe(true)
-    expect(bonusAppliesInMonth(bonuses[0]!, 4)).toBe(false)
+  it("applies annual bonus in same month every year", () => {
+    expect(bonusGrossForCalendarMonth(bonuses, "2025-03", 505)).toBe(50_000)
+    expect(bonusGrossForCalendarMonth(bonuses, "2026-03", 505)).toBe(50_000)
+    expect(bonusGrossForCalendarMonth(bonuses, "2025-04", 505)).toBe(0)
+  })
+
+  it("bonusAppliesInCalendarMonth checks schedule", () => {
+    expect(bonusAppliesInCalendarMonth(bonuses[0]!, "2024-12")).toBe(true)
+    expect(bonusAppliesInCalendarMonth(bonuses[0]!, "2025-12")).toBe(false)
+    expect(bonusAppliesInCalendarMonth(bonuses[1]!, "2026-03")).toBe(true)
   })
 })

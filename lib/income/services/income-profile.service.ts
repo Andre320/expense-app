@@ -2,6 +2,10 @@ import "server-only"
 
 import type { PrismaClient } from "@/app/generated/prisma/client"
 import {
+  defaultVoluntaryDeductionsForCreate,
+  pickDeductionFallback,
+} from "@/lib/income/income-profile-deductions"
+import {
   listIncomeProfileRows,
   listSerializedIncomeProfiles,
 } from "@/lib/income/services/income-profile-list"
@@ -53,6 +57,10 @@ export async function createIncomeProfile(
     _max: { position: true },
   })
 
+  const appSettings = await prisma.appSettings.findUnique({ where: { userId } })
+  const deductionFallback = pickDeductionFallback(profiles, appSettings)
+  const voluntary = defaultVoluntaryDeductionsForCreate(d, deductionFallback)
+
   const created = await prisma.incomeProfile.create({
     data: {
       userId,
@@ -62,9 +70,9 @@ export async function createIncomeProfile(
       crSalaryGross: String(d.crSalaryGross),
       crSalaryCurrency: d.crSalaryCurrency ?? "CRC",
       crPayPeriod: d.crPayPeriod ?? "MONTHLY",
-      crSolidaristaPct: String(d.crSolidaristaPct ?? 0),
-      crPensionComplementariaPct: String(d.crPensionComplementariaPct ?? 0),
-      crEsppPct: String(d.crEsppPct ?? 0),
+      crSolidaristaPct: String(voluntary.crSolidaristaPct),
+      crPensionComplementariaPct: String(voluntary.crPensionComplementariaPct),
+      crEsppPct: String(voluntary.crEsppPct),
       position: d.position ?? (maxPos._max.position ?? 0) + 1,
     },
   })

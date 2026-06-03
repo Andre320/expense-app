@@ -20,7 +20,8 @@ const sampleBonus = {
   name: "Productivity",
   grossAmount: 500_000,
   grossCurrency: "CRC",
-  months: "[3]",
+  paidOn: "2025-03-01",
+  repeatsAnnually: true,
 }
 
 describe("computeIncomeProfileBreakdown", () => {
@@ -49,20 +50,21 @@ describe("computeIncomeProfileBreakdown", () => {
 describe("computeExpectedNetForMonth", () => {
   it("returns 0 when no salary profile", () => {
     expect(
-      computeExpectedNetForMonth({ ...baseSettings, crSalaryGross: 0 }, [], 3).expectedNetCrc,
+      computeExpectedNetForMonth({ ...baseSettings, crSalaryGross: 0 }, [], "2025-03")
+        .expectedNetCrc,
     ).toBe(0)
   })
 
   it("returns salary-only net when no bonus in month", () => {
-    const base = computeExpectedNetForMonth(baseSettings, [], 4)
-    const withBonus = computeExpectedNetForMonth(baseSettings, [sampleBonus], 4)
+    const base = computeExpectedNetForMonth(baseSettings, [], "2025-04")
+    const withBonus = computeExpectedNetForMonth(baseSettings, [sampleBonus], "2025-04")
     expect(withBonus.expectedNetCrc).toBe(base.expectedNetCrc)
     expect(withBonus.bonusGrossCrc).toBe(0)
   })
 
   it("increases net in bonus month but less than naive gross add (taxes apply)", () => {
-    const base = computeExpectedNetForMonth(baseSettings, [], 3)
-    const withBonus = computeExpectedNetForMonth(baseSettings, [sampleBonus], 3)
+    const base = computeExpectedNetForMonth(baseSettings, [], "2025-03")
+    const withBonus = computeExpectedNetForMonth(baseSettings, [sampleBonus], "2025-03")
     expect(withBonus.bonusGrossCrc).toBe(500_000)
     expect(withBonus.expectedNetCrc).toBeGreaterThan(base.expectedNetCrc)
     expect(withBonus.expectedNetCrc - base.expectedNetCrc).toBeLessThan(500_000)
@@ -70,8 +72,9 @@ describe("computeExpectedNetForMonth", () => {
   })
 
   it("computeExpectedMonthlyIncomeBase uses current month", () => {
-    const month = new Date().getMonth() + 1
-    const expected = computeExpectedNetForMonth(baseSettings, [sampleBonus], month)
+    const now = new Date()
+    const calendarMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`
+    const expected = computeExpectedNetForMonth(baseSettings, [sampleBonus], calendarMonth)
     const fromHelper = computeExpectedMonthlyIncomeBase(baseSettings, [sampleBonus])
     expect(fromHelper).toBe(expected.expectedNetCrc)
   })
@@ -86,13 +89,16 @@ describe("computeExpectedNetForMonth", () => {
     expect(result!.grossMonthlyCrc).toBe(2_020_000)
   })
 
-  it("parses bonus months JSON string", () => {
-    const withBonus = computeExpectedNetForMonth(
-      baseSettings,
-      [{ ...sampleBonus, months: "[6,7]" }],
-      6,
-    )
-    expect(withBonus.activeBonuses.length).toBeGreaterThan(0)
+  it("one-off bonus does not apply in other years", () => {
+    const oneOff = {
+      ...sampleBonus,
+      paidOn: "2024-06-15",
+      repeatsAnnually: false,
+    }
+    const june2024 = computeExpectedNetForMonth(baseSettings, [oneOff], "2024-06")
+    const june2025 = computeExpectedNetForMonth(baseSettings, [oneOff], "2025-06")
+    expect(june2024.bonusGrossCrc).toBe(500_000)
+    expect(june2025.bonusGrossCrc).toBe(0)
   })
 
   it("computeLiveExpectedNetForCurrentMonth uses live salary override", () => {

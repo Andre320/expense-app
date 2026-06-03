@@ -7,6 +7,7 @@ import {
   INCOME_PROFILES_QUERY_KEY,
   type IncomeProfileDto,
 } from "@/components/features/income/income-profile-types"
+import { fetchSettings } from "@/components/features/income/use-income-planner"
 import { fetchJson, parseApiError } from "@/lib/shared/api-error"
 
 async function fetchProfiles(): Promise<IncomeProfileDto[]> {
@@ -18,6 +19,10 @@ export function useIncomeProfiles() {
   const { data, isPending, isError, error, refetch } = useQuery({
     queryKey: INCOME_PROFILES_QUERY_KEY,
     queryFn: fetchProfiles,
+  })
+  const settingsQuery = useQuery({
+    queryKey: ["settings"],
+    queryFn: fetchSettings,
   })
 
   const [label, setLabel] = React.useState("")
@@ -39,6 +44,9 @@ export function useIncomeProfiles() {
           crSalaryGross: Number(gross),
           crSalaryCurrency: currency,
           crPayPeriod: period,
+          crSolidaristaPct: settingsQuery.data?.crSolidaristaPct ?? 0,
+          crPensionComplementariaPct: settingsQuery.data?.crPensionComplementariaPct ?? 0,
+          crEsppPct: settingsQuery.data?.crEsppPct ?? 0,
         }),
       })
       if (!res.ok) throw await parseApiError(res)
@@ -71,6 +79,46 @@ export function useIncomeProfiles() {
     onError: (e: Error) => toast.error(e.message),
   })
 
+  const [editingId, setEditingId] = React.useState<string | null>(null)
+  const [editSolidaristaPct, setEditSolidaristaPct] = React.useState("")
+  const [editPensionPct, setEditPensionPct] = React.useState("")
+  const [editEsppPct, setEditEsppPct] = React.useState("")
+
+  const startEditingDeductions = React.useCallback((row: IncomeProfileDto) => {
+    setEditingId(row.id)
+    setEditSolidaristaPct(String(row.crSolidaristaPct))
+    setEditPensionPct(String(row.crPensionComplementariaPct))
+    setEditEsppPct(String(row.crEsppPct))
+  }, [])
+
+  const cancelEditingDeductions = React.useCallback(() => {
+    setEditingId(null)
+  }, [])
+
+  const updateDeductionsMut = useMutation({
+    mutationFn: async (id: string) => {
+      const res = await fetch(`/api/income-profiles/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          crSolidaristaPct: Number.parseFloat(editSolidaristaPct) || 0,
+          crPensionComplementariaPct: Number.parseFloat(editPensionPct) || 0,
+          crEsppPct: Number.parseFloat(editEsppPct) || 0,
+        }),
+      })
+      if (!res.ok) throw await parseApiError(res)
+      return res.json()
+    },
+    onSuccess: () => {
+      toast.success("Deductions updated for this period")
+      setEditingId(null)
+      qc.invalidateQueries({ queryKey: INCOME_PROFILES_QUERY_KEY })
+      qc.invalidateQueries({ queryKey: ["settings"] })
+      qc.invalidateQueries({ queryKey: ["analytics"] })
+    },
+    onError: (e: Error) => toast.error(e.message),
+  })
+
   const sorted = React.useMemo(
     () => [...(data ?? [])].sort((a, b) => b.effectiveFrom.localeCompare(a.effectiveFrom)),
     [data],
@@ -96,5 +144,15 @@ export function useIncomeProfiles() {
     setPeriod,
     createMut,
     deleteMut,
+    editingId,
+    editSolidaristaPct,
+    setEditSolidaristaPct,
+    editPensionPct,
+    setEditPensionPct,
+    editEsppPct,
+    setEditEsppPct,
+    startEditingDeductions,
+    cancelEditingDeductions,
+    updateDeductionsMut,
   }
 }

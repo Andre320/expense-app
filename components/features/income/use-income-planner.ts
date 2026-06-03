@@ -5,7 +5,6 @@ import * as React from "react"
 import { toast } from "sonner"
 import { fetchJson, parseApiError } from "@/lib/shared/api-error"
 import type { IncomeBonusDto } from "@/components/features/income/income-bonuses-manager"
-import { stringifyBonusMonths } from "@/lib/income/bonus"
 import { computeLiveExpectedNetForCurrentMonth } from "@/lib/income/profile"
 import {
   computeCrSalary,
@@ -91,7 +90,8 @@ export function useIncomePlannerForm({
         name: b.name,
         grossAmount: b.grossAmount,
         grossCurrency: b.grossCurrency,
-        months: stringifyBonusMonths(b.months),
+        paidOn: b.paidOn,
+        repeatsAnnually: b.repeatsAnnually,
       })),
     [bonuses],
   )

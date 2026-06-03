@@ -1,26 +1,13 @@
-/** Parse stored JSON month list (1–12). Invalid input returns []. */
-export function parseBonusMonths(raw: string): number[] {
-  try {
-    const parsed = JSON.parse(raw) as unknown
-    if (!Array.isArray(parsed)) return []
-    return parsed
-      .filter((m): m is number => typeof m === "number" && m >= 1 && m <= 12)
-      .sort((a, b) => a - b)
-  } catch {
-    return []
-  }
-}
-
-export function stringifyBonusMonths(months: number[]): string {
-  const unique = [...new Set(months.filter((m) => m >= 1 && m <= 12))].sort((a, b) => a - b)
-  return JSON.stringify(unique)
-}
+/** Calendar month key yyyy-MM for bonus scheduling. */
+export type CalendarMonthKey = `${number}-${string}`
 
 export type IncomeBonusLike = {
   name: string
   grossAmount: number
   grossCurrency: string
-  months: number[]
+  /** ISO date YYYY-MM-DD */
+  paidOn: string
+  repeatsAnnually: boolean
 }
 
 /** Convert bonus gross to monthly CRC for tax combination. */
@@ -34,31 +21,42 @@ export function bonusGrossToMonthlyCrc(
   return Math.max(0, bonus.grossAmount)
 }
 
-export function bonusAppliesInMonth(bonus: IncomeBonusLike, month: number): boolean {
-  return bonus.months.includes(month)
+export function bonusPaidCalendarMonth(paidOn: string): string {
+  return paidOn.slice(0, 7)
 }
 
-/** Sum bonus gross in CRC for a calendar month (1–12). */
-export function bonusGrossForMonth(
+export function bonusAppliesInCalendarMonth(
+  bonus: IncomeBonusLike,
+  yyyyMm: string,
+): boolean {
+  const paidYm = bonusPaidCalendarMonth(bonus.paidOn)
+  if (bonus.repeatsAnnually) {
+    return paidYm.slice(5, 7) === yyyyMm.slice(5, 7)
+  }
+  return paidYm === yyyyMm
+}
+
+/** Sum bonus gross in CRC for a calendar month (yyyy-MM). */
+export function bonusGrossForCalendarMonth(
   bonuses: IncomeBonusLike[],
-  month: number,
+  yyyyMm: string,
   crcPerUsd: number,
 ): number {
   let total = 0
   for (const b of bonuses) {
-    if (!bonusAppliesInMonth(b, month)) continue
+    if (!bonusAppliesInCalendarMonth(b, yyyyMm)) continue
     total += bonusGrossToMonthlyCrc(b, crcPerUsd)
   }
   return total
 }
 
-export function activeBonusesForMonth(
+export function activeBonusesForCalendarMonth(
   bonuses: IncomeBonusLike[],
-  month: number,
+  yyyyMm: string,
   crcPerUsd: number,
 ): { name: string; grossAmountCrc: number }[] {
   return bonuses
-    .filter((b) => bonusAppliesInMonth(b, month))
+    .filter((b) => bonusAppliesInCalendarMonth(b, yyyyMm))
     .map((b) => ({
       name: b.name,
       grossAmountCrc: bonusGrossToMonthlyCrc(b, crcPerUsd),

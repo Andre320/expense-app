@@ -5,6 +5,7 @@ export const DEMO_PASSWORD = "demo-password-123"
 
 export async function login(page: Page) {
   await page.goto("/login")
+  await expect(page.getByRole("heading", { name: "Sign in" })).toBeVisible()
   await page.getByLabel("Email").fill(DEMO_EMAIL)
   await page.getByLabel("Password").fill(DEMO_PASSWORD)
   await page.getByRole("button", { name: "Sign in" }).click()

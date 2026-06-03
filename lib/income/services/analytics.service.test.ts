@@ -89,13 +89,17 @@ describe("analytics.service", () => {
   })
 
   it("reports active bonuses for the current calendar month", async () => {
-    const month = new Date().getMonth() + 1
+    const now = new Date()
+    const paidOn = new Date(
+      `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-15`,
+    )
     ensureModel(prisma, "incomeBonus").findMany!.mockResolvedValue([
       {
         name: "Holiday",
         grossAmount: "100000",
         grossCurrency: "CRC",
-        months: `[${month}]`,
+        paidOn,
+        repeatsAnnually: false,
       },
     ])
     const result = await getAnalyticsSummary(prisma, userId)

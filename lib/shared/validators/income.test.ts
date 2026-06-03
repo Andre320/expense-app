@@ -28,22 +28,23 @@ describe("settingsPatchZ", () => {
 })
 
 describe("incomeBonusCreateZ", () => {
-  it("accepts unique bonus months", () => {
+  it("accepts bonus with payment date", () => {
     expect(
       incomeBonusCreateZ.safeParse({
-        name: "Annual",
+        name: "Aguinaldo",
         grossAmount: 1000,
-        months: [3, 6, 12],
+        paidOn: "2025-12-01",
+        repeatsAnnually: true,
       }).success,
     ).toBe(true)
   })
 
-  it("rejects duplicate bonus months", () => {
+  it("rejects invalid payment date", () => {
     expect(
       incomeBonusCreateZ.safeParse({
-        name: "Dup",
+        name: "Bad",
         grossAmount: 1000,
-        months: [3, 3],
+        paidOn: "12/01/2025",
       }).success,
     ).toBe(false)
   })

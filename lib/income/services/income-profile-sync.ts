@@ -1,6 +1,10 @@
 import "server-only"
 
 import type { PrismaClient } from "@/app/generated/prisma/client"
+import {
+  pickDeductionFallback,
+  profileHasVoluntaryDeductions,
+} from "@/lib/income/income-profile-deductions"
 import { getCurrentOpenProfile, type IncomeProfileRow } from "@/lib/income/income-profile-period"
 import { numFromDecimal } from "@/lib/shared/decimal"
 import { listIncomeProfileRows } from "@/lib/income/services/income-profile-list"
@@ -19,6 +23,26 @@ function toRow(p: {
   position: number
 }): IncomeProfileRow {
   return p
+}
+
+/** Copy Solidarista / pension / ESPP from template when older periods were saved at 0%. */
+export async function repairProfileVoluntaryDeductions(prisma: PrismaClient, userId: string) {
+  const settings = await prisma.appSettings.findUnique({ where: { userId } })
+  const profiles = await listIncomeProfileRows(prisma, userId)
+  const fallback = pickDeductionFallback(profiles, settings)
+  if (!fallback) return
+
+  for (const profile of profiles) {
+    if (profileHasVoluntaryDeductions(profile)) continue
+    await prisma.incomeProfile.update({
+      where: { id: profile.id },
+      data: {
+        crSolidaristaPct: String(numFromDecimal(fallback.crSolidaristaPct)),
+        crPensionComplementariaPct: String(numFromDecimal(fallback.crPensionComplementariaPct)),
+        crEsppPct: String(numFromDecimal(fallback.crEsppPct)),
+      },
+    })
+  }
 }
 
 export async function ensureIncomeProfilesFromSettings(prisma: PrismaClient, userId: string) {

@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { SelectField } from "@/components/select-field"
 import { formatMoneyBase } from "@/lib/shared/format-money"
-import { REPORTING_CURRENCY } from "@/lib/shared/app-currency"
+import { VoluntaryDeductionsFields } from "./planner-form.parts"
 import { useIncomeProfiles } from "./use-income-profiles"
 
 function formatPeriodRange(from: string, to: string | null) {
@@ -22,8 +22,8 @@ export function IncomeProfilesManager() {
       <header>
         <h2 className="text-lg font-semibold tracking-tight">Salary periods</h2>
         <p className="text-muted-foreground mt-1 text-sm">
-          Track promotions and past salaries. Each period applies from its start date until the end
-          date (or ongoing). Dashboard planned income uses the profile active for each month.
+          Track promotions and past salaries. Each period has its own gross and payroll deduction
+          percentages; CCSS and renta follow Costa Rica rules for that salary.
         </p>
       </header>
 
@@ -123,37 +123,89 @@ export function IncomeProfilesManager() {
             <p className="text-muted-foreground text-sm">No salary periods yet.</p>
           ) : (
             <ul className="divide-border divide-y">
-              {p.sorted.map((row) => (
-                <li key={row.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
-                  <div>
-                    <p className="font-medium">{row.label}</p>
-                    <p className="text-muted-foreground text-xs">
-                      {formatPeriodRange(row.effectiveFrom, row.effectiveTo)}
-                    </p>
-                    <p className="text-muted-foreground mt-1 text-xs tabular-nums">
-                      {formatMoneyBase(row.crSalaryGross, row.crSalaryCurrency)} gross ·{" "}
-                      {row.crPayPeriod === "BIWEEKLY" ? "biweekly" : "monthly"}
-                    </p>
-                  </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={p.deleteMut.isPending}
-                    onClick={() => p.deleteMut.mutate(row.id)}
-                  >
-                    Remove
-                  </Button>
-                </li>
-              ))}
+              {p.sorted.map((row) => {
+                const isEditing = p.editingId === row.id
+                return (
+                  <li key={row.id} className="space-y-3 py-3">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div>
+                        <p className="font-medium">{row.label}</p>
+                        <p className="text-muted-foreground text-xs">
+                          {formatPeriodRange(row.effectiveFrom, row.effectiveTo)}
+                        </p>
+                        <p className="text-muted-foreground mt-1 text-xs tabular-nums">
+                          {formatMoneyBase(row.crSalaryGross, row.crSalaryCurrency)} gross ·{" "}
+                          {row.crPayPeriod === "BIWEEKLY" ? "biweekly" : "monthly"}
+                        </p>
+                        {!isEditing ? (
+                          <p className="text-muted-foreground text-xs">
+                            Solidarista {row.crSolidaristaPct}% · Pensión{" "}
+                            {row.crPensionComplementariaPct}% · ESPP {row.crEsppPct}%
+                          </p>
+                        ) : null}
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {!isEditing ? (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => p.startEditingDeductions(row)}
+                          >
+                            Edit deductions
+                          </Button>
+                        ) : null}
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={p.deleteMut.isPending}
+                          onClick={() => p.deleteMut.mutate(row.id)}
+                        >
+                          Remove
+                        </Button>
+                      </div>
+                    </div>
+                    {isEditing ? (
+                      <div className="space-y-3">
+                        <VoluntaryDeductionsFields
+                          solidaristaPct={p.editSolidaristaPct}
+                          onSolidaristaPctChange={p.setEditSolidaristaPct}
+                          pensionPct={p.editPensionPct}
+                          onPensionPctChange={p.setEditPensionPct}
+                          esppPct={p.editEsppPct}
+                          onEsppPctChange={p.setEditEsppPct}
+                        />
+                        <div className="flex flex-wrap gap-2">
+                          <Button
+                            size="sm"
+                            disabled={p.updateDeductionsMut.isPending}
+                            onClick={() => p.updateDeductionsMut.mutate(row.id)}
+                          >
+                            {p.updateDeductionsMut.isPending ? "Saving…" : "Save"}
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            disabled={p.updateDeductionsMut.isPending}
+                            onClick={p.cancelEditingDeductions}
+                          >
+                            Cancel
+                          </Button>
+                        </div>
+                      </div>
+                    ) : null}
+                  </li>
+                )
+              })}
             </ul>
           )}
         </CardContent>
       </Card>
 
       <p className="text-muted-foreground text-[11px]">
-        Deductions for each period follow the values saved in the salary calculator below (current
-        open profile). Amounts shown in {REPORTING_CURRENCY} on the dashboard use net estimates
-        after tax rules.
+        New periods copy deduction % from the salary calculator below. Use{" "}
+        <span className="font-medium">Edit deductions</span> on a past period when Solidarista,
+        pension, or ESPP differed that year. The calculator only updates your current ongoing
+        salary.
       </p>
     </div>
   )

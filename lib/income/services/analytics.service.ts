@@ -5,6 +5,10 @@ import type { PrismaClient } from "@/app/generated/prisma/client"
 import { REPORTING_CURRENCY } from "@/lib/shared/app-currency"
 import { roundMoney, amountToReportingBase } from "@/lib/shared/currency"
 import {
+  profileToSettingsWithDeductions,
+  pickDeductionFallback,
+} from "@/lib/income/income-profile-deductions"
+import {
   getProfileForMonth,
   hasSalaryProfile,
   plannedNetForCalendarMonth,
@@ -15,6 +19,7 @@ import {
   ensureIncomeProfilesFromSettings,
   listIncomeProfileRows,
 } from "@/lib/income/services/income-profile.service"
+import { repairProfileVoluntaryDeductions } from "@/lib/income/services/income-profile-sync"
 import { numFromDecimal } from "@/lib/shared/utils"
 
 export type ActiveBonusSummary = {
@@ -53,14 +58,16 @@ function bonusRowsFromDb(
     name: string
     grossAmount: unknown
     grossCurrency: string
-    months: string
+    paidOn: Date
+    repeatsAnnually: boolean
   }[],
 ): IncomeBonusRow[] {
   return bonuses.map((b) => ({
     name: b.name,
     grossAmount: b.grossAmount,
     grossCurrency: b.grossCurrency,
-    months: b.months,
+    paidOn: b.paidOn.toISOString().slice(0, 10),
+    repeatsAnnually: b.repeatsAnnually,
   }))
 }
 
@@ -69,6 +76,7 @@ export async function getAnalyticsSummary(
   userId: string,
 ): Promise<AnalyticsSummaryPayload> {
   await ensureIncomeProfilesFromSettings(prisma, userId)
+  await repairProfileVoluntaryDeductions(prisma, userId)
 
   const settings = await prisma.appSettings.findUniqueOrThrow({
     where: { userId },
@@ -119,6 +127,8 @@ export async function getAnalyticsSummary(
       settings.crCrcPerUsd,
       bonusRows,
       month,
+      profiles,
+      settings,
     )
     return {
       month,
@@ -165,17 +175,11 @@ export async function getAnalyticsSummary(
     else ledgerNetBalance -= amt
   }
 
-  const currentProfile = getProfileForMonth(profiles, format(new Date(), "yyyy-MM"))
+  const currentMonthKey = format(new Date(), "yyyy-MM")
+  const currentProfile = getProfileForMonth(profiles, currentMonthKey)
+  const deductionFallback = pickDeductionFallback(profiles, settings)
   const settingsForForecast = currentProfile
-    ? {
-        crSalaryGross: currentProfile.crSalaryGross,
-        crSalaryCurrency: currentProfile.crSalaryCurrency,
-        crPayPeriod: currentProfile.crPayPeriod,
-        crCrcPerUsd: settings.crCrcPerUsd,
-        crSolidaristaPct: currentProfile.crSolidaristaPct,
-        crPensionComplementariaPct: currentProfile.crPensionComplementariaPct,
-        crEsppPct: currentProfile.crEsppPct,
-      }
+    ? profileToSettingsWithDeductions(currentProfile, settings.crCrcPerUsd, deductionFallback)
     : settings
 
   const incomeForecast = computeExpectedNetForCurrentMonth(settingsForForecast, bonusRows)

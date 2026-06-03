@@ -3,10 +3,12 @@ export type IncomeBonusDto = {
   name: string
   grossAmount: number
   grossCurrency: string
-  months: number[]
+  paidOn: string
+  repeatsAnnually: boolean
   position: number
 }
 
+/** Month short labels for forecast sidebar (calendar month 1–12). */
 export const MONTH_LABELS = [
   "Ene",
   "Feb",

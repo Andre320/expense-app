@@ -50,19 +50,21 @@ describe("serializeSavings", () => {
 })
 
 describe("serializeIncomeBonus", () => {
-  it("parses bonus months JSON", () => {
+  it("serializes paidOn and repeatsAnnually", () => {
     const result = serializeIncomeBonus({
       id: "b1",
       userId: "u1",
       name: "Annual",
       grossAmount: "500000",
       grossCurrency: "CRC",
-      months: "[3,12]",
+      paidOn: new Date("2025-12-01T12:00:00.000Z"),
+      repeatsAnnually: true,
       position: 1,
       createdAt: now,
       updatedAt: now,
     })
-    expect(result.months).toEqual([3, 12])
+    expect(result.paidOn).toBe("2025-12-01")
+    expect(result.repeatsAnnually).toBe(true)
     expect(result.grossAmount).toBe(500000)
   })
 })
