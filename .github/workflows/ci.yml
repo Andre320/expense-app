@@ -11,7 +11,8 @@ jobs:
 
     services:
       postgres:
-        image: postgres:18
+        # ECR public mirror — Docker Hub pulls often time out on GHA runners.
+        image: public.ecr.aws/docker/library/postgres:18
         env:
           POSTGRES_USER: expense
           POSTGRES_PASSWORD: expense
