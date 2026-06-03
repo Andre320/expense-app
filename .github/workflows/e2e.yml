@@ -29,6 +29,7 @@ jobs:
       CI: true
       DATABASE_URL: postgresql://expense:expense@localhost:5432/expense_app_test?schema=public
       AUTH_SECRET: e2e-ci-auth-secret-not-for-production
+      AUTH_URL: http://localhost:3000
 
     steps:
       - uses: actions/checkout@v4
