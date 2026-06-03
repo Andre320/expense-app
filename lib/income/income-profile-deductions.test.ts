@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest"
 import {
+  defaultVoluntaryDeductionsForCreate,
   mergeProfileVoluntaryDeductions,
   pickDeductionFallback,
   profileHasVoluntaryDeductions,
   profileToSettingsWithDeductions,
+  voluntaryPctFromSource,
 } from "@/lib/income/income-profile-deductions"
 import type { IncomeProfileRow } from "@/lib/income/income-profile-period"
 
@@ -49,5 +51,40 @@ describe("income-profile-deductions", () => {
     const settings = profileToSettingsWithDeductions(base, 505, template)
     expect(settings.crSolidaristaPct).toBe(5)
     expect(settings.crEsppPct).toBe(10)
+  })
+
+  it("pickDeductionFallback uses app settings when profiles lack deductions", () => {
+    const settings = { crSolidaristaPct: 3, crPensionComplementariaPct: 0, crEsppPct: 0 }
+    expect(pickDeductionFallback([base], settings)).toEqual(settings)
+  })
+
+  it("pickDeductionFallback returns open profile without deductions when no template", () => {
+    const open = { ...base, id: "open", effectiveTo: null }
+    expect(pickDeductionFallback([open], null)?.id).toBe("open")
+  })
+
+  it("mergeProfileVoluntaryDeductions leaves profile unchanged when deductions exist", () => {
+    expect(mergeProfileVoluntaryDeductions(template, base)).toBe(template)
+  })
+
+  it("defaultVoluntaryDeductionsForCreate uses explicit values and fallback", () => {
+    expect(defaultVoluntaryDeductionsForCreate({ crEsppPct: 7 }, template)).toEqual({
+      crSolidaristaPct: 5,
+      crPensionComplementariaPct: 0,
+      crEsppPct: 7,
+    })
+    expect(defaultVoluntaryDeductionsForCreate({}, null)).toEqual({
+      crSolidaristaPct: 0,
+      crPensionComplementariaPct: 0,
+      crEsppPct: 0,
+    })
+  })
+
+  it("voluntaryPctFromSource parses decimals", () => {
+    expect(voluntaryPctFromSource(template)).toEqual({
+      solidaristaPct: 5,
+      pensionComplementariaPct: 0,
+      esppPct: 10,
+    })
   })
 })
