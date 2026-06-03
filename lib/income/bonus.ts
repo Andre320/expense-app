@@ -25,10 +25,7 @@ export function bonusPaidCalendarMonth(paidOn: string): string {
   return paidOn.slice(0, 7)
 }
 
-export function bonusAppliesInCalendarMonth(
-  bonus: IncomeBonusLike,
-  yyyyMm: string,
-): boolean {
+export function bonusAppliesInCalendarMonth(bonus: IncomeBonusLike, yyyyMm: string): boolean {
   const paidYm = bonusPaidCalendarMonth(bonus.paidOn)
   if (bonus.repeatsAnnually) {
     return paidYm.slice(5, 7) === yyyyMm.slice(5, 7)

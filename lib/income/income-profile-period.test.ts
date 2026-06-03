@@ -56,20 +56,8 @@ describe("income-profile-period", () => {
       crEsppPct: 10,
     }
     const profiles = [baseProfile, currentWithDeductions]
-    const withoutFallback = plannedNetForCalendarMonth(
-      baseProfile,
-      505,
-      [],
-      "2024-06",
-    )
-    const withFallback = plannedNetForCalendarMonth(
-      baseProfile,
-      505,
-      [],
-      "2024-06",
-      profiles,
-      null,
-    )
+    const withoutFallback = plannedNetForCalendarMonth(baseProfile, 505, [], "2024-06")
+    const withFallback = plannedNetForCalendarMonth(baseProfile, 505, [], "2024-06", profiles, null)
     expect(withFallback).toBeLessThan(withoutFallback)
     expect(withFallback).toBeGreaterThan(0)
   })

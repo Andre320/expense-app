@@ -98,9 +98,7 @@ export function IncomeBonusFormCard({
 
         <Button
           type="button"
-          disabled={
-            createMut.isPending || !name.trim() || !gross || Number(gross) <= 0 || !paidOn
-          }
+          disabled={createMut.isPending || !name.trim() || !gross || Number(gross) <= 0 || !paidOn}
           onClick={() => createMut.mutate()}
         >
           Add bonus

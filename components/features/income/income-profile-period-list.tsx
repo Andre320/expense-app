@@ -65,11 +65,7 @@ export function IncomeProfilePeriodList({
               </div>
               <div className="flex flex-wrap gap-2">
                 {!isEditing ? (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => startEditingDeductions(row)}
-                  >
+                  <Button variant="outline" size="sm" onClick={() => startEditingDeductions(row)}>
                     Edit deductions
                   </Button>
                 ) : null}

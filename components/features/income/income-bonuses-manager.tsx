@@ -21,8 +21,8 @@ export function IncomeBonusesManager({ crcPerUsd = 505, embedded }: IncomeBonuse
         <header>
           <h2 className="text-lg font-semibold tracking-tight">Bonuses</h2>
           <p className="text-muted-foreground mt-1 text-sm">
-            One-off or yearly payments on a date. Counted as salary that month for taxes and
-            payroll deductions.
+            One-off or yearly payments on a date. Counted as salary that month for taxes and payroll
+            deductions.
           </p>
         </header>
       ) : null}
