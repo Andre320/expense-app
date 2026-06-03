@@ -1,8 +1,7 @@
 import {
-  activeBonusesForMonth,
-  bonusGrossForMonth,
+  activeBonusesForCalendarMonth,
+  bonusGrossForCalendarMonth,
   type IncomeBonusLike,
-  parseBonusMonths,
 } from "@/lib/income/bonus"
 import { roundMoney } from "@/lib/shared/currency"
 import { numFromDecimal } from "@/lib/shared/decimal"
@@ -27,7 +26,8 @@ export type IncomeBonusRow = {
   name: string
   grossAmount: unknown
   grossCurrency: string
-  months: string
+  paidOn: string
+  repeatsAnnually: boolean
 }
 
 export type IncomeProfileBreakdown = {
@@ -83,7 +83,8 @@ function bonusesAsLike(rows: IncomeBonusRow[]): IncomeBonusLike[] {
     name: b.name,
     grossAmount: numFromDecimal(b.grossAmount),
     grossCurrency: b.grossCurrency,
-    months: parseBonusMonths(b.months),
+    paidOn: b.paidOn,
+    repeatsAnnually: b.repeatsAnnually,
   }))
 }
 
@@ -91,7 +92,7 @@ function bonusesAsLike(rows: IncomeBonusRow[]): IncomeBonusLike[] {
 export function computeIncomeProfileBreakdownForMonth(
   settings: IncomeProfileSettings,
   bonuses: IncomeBonusRow[],
-  month: number,
+  calendarMonth: string,
   salaryOverride?: {
     gross: number
     period: CrPayPeriod
@@ -103,7 +104,7 @@ export function computeIncomeProfileBreakdownForMonth(
 
   const crcPerUsd = numFromDecimal(settings.crCrcPerUsd)
   const bonusList = bonusesAsLike(bonuses)
-  const bonusGrossCrc = bonusGrossForMonth(bonusList, month, crcPerUsd)
+  const bonusGrossCrc = bonusGrossForCalendarMonth(bonusList, calendarMonth, crcPerUsd)
   const totalGross = baseGross + bonusGrossCrc
 
   const breakdown = computeCrSalaryFromMonthlyGrossCrc(totalGross, {
@@ -122,7 +123,7 @@ export function computeIncomeProfileBreakdownForMonth(
 export function computeIncomeProfileBreakdown(
   settings: IncomeProfileSettings,
 ): IncomeProfileBreakdown | null {
-  const result = computeIncomeProfileBreakdownForMonth(settings, [], 1)
+  const result = computeIncomeProfileBreakdownForMonth(settings, [], "2000-01")
   if (!result) return null
   return { ...result, bonusGrossCrc: 0 }
 }
@@ -130,19 +131,25 @@ export function computeIncomeProfileBreakdown(
 export function computeExpectedNetForMonth(
   settings: IncomeProfileSettings,
   bonuses: IncomeBonusRow[],
-  month: number,
+  calendarMonth: string,
   salaryOverride?: {
     gross: number
     period: CrPayPeriod
     currency: "CRC" | "USD"
   },
 ): ExpectedIncomeForMonth {
+  const month = Number.parseInt(calendarMonth.slice(5, 7), 10)
   const crcPerUsd = numFromDecimal(settings.crCrcPerUsd)
   const bonusList = bonusesAsLike(bonuses)
-  const activeBonuses = activeBonusesForMonth(bonusList, month, crcPerUsd)
-  const bonusGrossCrc = bonusGrossForMonth(bonusList, month, crcPerUsd)
+  const activeBonuses = activeBonusesForCalendarMonth(bonusList, calendarMonth, crcPerUsd)
+  const bonusGrossCrc = bonusGrossForCalendarMonth(bonusList, calendarMonth, crcPerUsd)
 
-  const profile = computeIncomeProfileBreakdownForMonth(settings, bonuses, month, salaryOverride)
+  const profile = computeIncomeProfileBreakdownForMonth(
+    settings,
+    bonuses,
+    calendarMonth,
+    salaryOverride,
+  )
 
   return {
     expectedNetCrc: profile ? roundMoney(profile.netMonthlyCrc) : 0,
@@ -161,8 +168,9 @@ export function computeExpectedNetForCurrentMonth(
     currency: "CRC" | "USD"
   },
 ): ExpectedIncomeForMonth {
-  const month = new Date().getMonth() + 1
-  return computeExpectedNetForMonth(settings, bonuses, month, salaryOverride)
+  const now = new Date()
+  const calendarMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`
+  return computeExpectedNetForMonth(settings, bonuses, calendarMonth, salaryOverride)
 }
 
 /** Expected monthly net income in CRC (current calendar month, includes bonuses). */

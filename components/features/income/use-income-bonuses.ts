@@ -1,6 +1,7 @@
 "use client"
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { format } from "date-fns"
 import * as React from "react"
 import { toast } from "sonner"
 import type { IncomeBonusDto } from "@/components/features/income/income-bonus-types"
@@ -24,13 +25,8 @@ export function useIncomeBonuses() {
   const [name, setName] = React.useState("")
   const [gross, setGross] = React.useState("")
   const [currency, setCurrency] = React.useState<"CRC" | "USD">("CRC")
-  const [selectedMonths, setSelectedMonths] = React.useState<number[]>([])
-
-  function toggleMonth(m: number) {
-    setSelectedMonths((prev) =>
-      prev.includes(m) ? prev.filter((x) => x !== m) : [...prev, m].sort((a, b) => a - b),
-    )
-  }
+  const [paidOn, setPaidOn] = React.useState(() => format(new Date(), "yyyy-MM-dd"))
+  const [repeatsAnnually, setRepeatsAnnually] = React.useState(false)
 
   const createMut = useMutation({
     mutationFn: async () => {
@@ -41,7 +37,8 @@ export function useIncomeBonuses() {
           name: name.trim(),
           grossAmount: Number(gross),
           grossCurrency: currency,
-          months: selectedMonths,
+          paidOn,
+          repeatsAnnually,
         }),
       })
       if (!res.ok) throw await parseApiError(res)
@@ -52,7 +49,8 @@ export function useIncomeBonuses() {
       setName("")
       setGross("")
       setCurrency("CRC")
-      setSelectedMonths([])
+      setPaidOn(format(new Date(), "yyyy-MM-dd"))
+      setRepeatsAnnually(false)
       qc.invalidateQueries({ queryKey: INCOME_BONUSES_QUERY_KEY })
       qc.invalidateQueries({ queryKey: ["analytics"] })
     },
@@ -86,8 +84,10 @@ export function useIncomeBonuses() {
     setGross,
     currency,
     setCurrency,
-    selectedMonths,
-    toggleMonth,
+    paidOn,
+    setPaidOn,
+    repeatsAnnually,
+    setRepeatsAnnually,
     createMut,
     deleteMut,
   }

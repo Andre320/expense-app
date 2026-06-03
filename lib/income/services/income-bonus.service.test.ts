@@ -11,6 +11,7 @@ describe("income-bonus.service", () => {
   const prisma = createMockPrisma()
   const userId = "user-1"
   const now = new Date("2026-05-01T00:00:00.000Z")
+  const paidOn = new Date("2025-12-01T12:00:00.000Z")
 
   const bonusRow = {
     id: "bonus-1",
@@ -18,7 +19,8 @@ describe("income-bonus.service", () => {
     name: "Annual",
     grossAmount: "500000",
     grossCurrency: "CRC",
-    months: "[12]",
+    paidOn,
+    repeatsAnnually: true,
     position: 1,
     createdAt: now,
     updatedAt: now,
@@ -45,7 +47,8 @@ describe("income-bonus.service", () => {
     const rows = await listSerializedIncomeBonuses(prisma, userId)
     expect(rows).toHaveLength(1)
     expect(rows[0]!.name).toBe("Annual")
-    expect(rows[0]!.months).toEqual([12])
+    expect(rows[0]!.paidOn).toBe("2025-12-01")
+    expect(rows[0]!.repeatsAnnually).toBe(true)
   })
 
   it("uses position 1 when no prior bonuses exist", async () => {
@@ -53,7 +56,7 @@ describe("income-bonus.service", () => {
     await createIncomeBonus(prisma, userId, {
       name: "First",
       grossAmount: 1,
-      months: [1],
+      paidOn: "2026-01-01",
     })
     expect(prisma.incomeBonus.create).toHaveBeenCalledWith(
       expect.objectContaining({ data: expect.objectContaining({ position: 1 }) }),
@@ -64,12 +67,16 @@ describe("income-bonus.service", () => {
     const created = await createIncomeBonus(prisma, userId, {
       name: "Q1",
       grossAmount: 100000,
-      months: [3],
+      paidOn: "2025-03-15",
     })
     expect(created.name).toBe("Q1")
     expect(prisma.incomeBonus.create).toHaveBeenCalledWith(
       expect.objectContaining({
-        data: expect.objectContaining({ userId, position: 2, months: "[3]" }),
+        data: expect.objectContaining({
+          userId,
+          position: 2,
+          repeatsAnnually: false,
+        }),
       }),
     )
   })
@@ -79,7 +86,8 @@ describe("income-bonus.service", () => {
       name: "USD Bonus",
       grossAmount: 1000,
       grossCurrency: "USD",
-      months: [6],
+      paidOn: "2025-06-01",
+      repeatsAnnually: true,
       position: 9,
     })
     expect(prisma.incomeBonus.create).toHaveBeenCalledWith(
@@ -87,6 +95,7 @@ describe("income-bonus.service", () => {
         data: expect.objectContaining({
           grossCurrency: "USD",
           position: 9,
+          repeatsAnnually: true,
         }),
       }),
     )
@@ -102,7 +111,8 @@ describe("income-bonus.service", () => {
       name: "Renamed",
       grossAmount: 200000,
       grossCurrency: "USD",
-      months: [1, 7],
+      paidOn: "2024-07-01",
+      repeatsAnnually: false,
       position: 3,
     })
     expect(prisma.incomeBonus.update).toHaveBeenCalledWith({
@@ -111,7 +121,8 @@ describe("income-bonus.service", () => {
         name: "Renamed",
         grossAmount: "200000",
         grossCurrency: "USD",
-        months: "[1,7]",
+        paidOn: expect.any(Date),
+        repeatsAnnually: false,
         position: 3,
       },
     })

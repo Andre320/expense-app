@@ -1,6 +1,7 @@
 import type {
   Category,
   IncomeBonus,
+  IncomeProfile,
   RsuPlan,
   RsuVest,
   SavingsAccount,
@@ -10,7 +11,6 @@ import type {
   Tag,
   Transaction,
 } from "@/app/generated/prisma/client"
-import { parseBonusMonths } from "@/lib/income/bonus"
 import { numFromDecimal } from "@/lib/shared/decimal"
 
 export function serializeTransaction(
@@ -82,13 +82,32 @@ export function serializeSavings(g: SavingsGoal) {
   }
 }
 
+export function serializeIncomeProfile(p: IncomeProfile) {
+  return {
+    id: p.id,
+    label: p.label,
+    effectiveFrom: p.effectiveFrom.toISOString().slice(0, 10),
+    effectiveTo: p.effectiveTo ? p.effectiveTo.toISOString().slice(0, 10) : null,
+    crSalaryGross: numFromDecimal(p.crSalaryGross),
+    crSalaryCurrency: p.crSalaryCurrency,
+    crPayPeriod: p.crPayPeriod,
+    crSolidaristaPct: numFromDecimal(p.crSolidaristaPct),
+    crPensionComplementariaPct: numFromDecimal(p.crPensionComplementariaPct),
+    crEsppPct: numFromDecimal(p.crEsppPct),
+    position: p.position,
+    createdAt: p.createdAt.toISOString(),
+    updatedAt: p.updatedAt.toISOString(),
+  }
+}
+
 export function serializeIncomeBonus(b: IncomeBonus) {
   return {
     id: b.id,
     name: b.name,
     grossAmount: numFromDecimal(b.grossAmount),
     grossCurrency: b.grossCurrency,
-    months: parseBonusMonths(b.months),
+    paidOn: b.paidOn.toISOString().slice(0, 10),
+    repeatsAnnually: b.repeatsAnnually,
     position: b.position,
     createdAt: b.createdAt.toISOString(),
     updatedAt: b.updatedAt.toISOString(),

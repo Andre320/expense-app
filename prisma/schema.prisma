@@ -41,6 +41,7 @@ model User {
   accounts       Account[]
   sessions       Session[]
   appSettings    AppSettings?
+  incomeProfiles IncomeProfile[]
   incomeBonuses  IncomeBonus[]
   categories     Category[]
   knownStores    KnownStore[]
@@ -109,21 +110,48 @@ model AppSettings {
   updatedAt DateTime @updatedAt
 }
 
-/// Fixed gross bonus that repeats in selected calendar months every year.
-model IncomeBonus {
-  id            String   @id @default(cuid())
-  userId        String
-  user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  name          String
-  grossAmount   Decimal
-  grossCurrency String   @default("CRC")
-  /// JSON array of month numbers 1–12, e.g. "[3,12]"
-  months        String
-  position      Int      @default(0)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+/// Dated salary profile — supports promotions and historical planning accuracy.
+model IncomeProfile {
+  id     String @id @default(cuid())
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  label         String   @default("Salary")
+  effectiveFrom DateTime
+  /// null = open-ended (current)
+  effectiveTo   DateTime?
+
+  crSalaryGross    Decimal
+  crSalaryCurrency String  @default("CRC")
+  crPayPeriod      String  @default("MONTHLY")
+  crSolidaristaPct Decimal @default(0)
+  crPensionComplementariaPct Decimal @default(0)
+  crEsppPct Decimal @default(0)
+
+  position  Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([userId])
+  @@index([userId, effectiveFrom])
+}
+
+/// Gross bonus paid on a date (combined with salary for CCSS, renta, Solidarista, ESPP).
+model IncomeBonus {
+  id                String   @id @default(cuid())
+  userId            String
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name              String
+  grossAmount       Decimal
+  grossCurrency     String   @default("CRC")
+  paidOn            DateTime @db.Date
+  repeatsAnnually   Boolean  @default(false)
+  position          Int      @default(0)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@index([userId])
+  @@index([userId, paidOn])
 }
 
 model Category {

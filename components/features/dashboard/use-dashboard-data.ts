@@ -8,7 +8,12 @@ import {
 import { REPORTING_CURRENCY } from "@/lib/shared/app-currency"
 
 export type DashboardSummary = {
-  monthly: { month: string; income: number; expense: number }[]
+  monthly: {
+    month: string
+    incomeLedger: number
+    plannedIncome: number
+    expense: number
+  }[]
   burnRate3Mo: number
   savingsTotal: number
   savingsAccountsTotal?: number
@@ -33,11 +38,11 @@ export function deriveDashboardData(
     label: m.month.slice(5),
   }))
 
-  const netLast =
-    data.monthly.length > 0
-      ? data.monthly[data.monthly.length - 1]!.income -
-        data.monthly[data.monthly.length - 1]!.expense
-      : 0
+  const lastMonth = data.monthly.length > 0 ? data.monthly[data.monthly.length - 1]! : null
+  const netLast = lastMonth
+    ? (lastMonth.plannedIncome > 0 ? lastMonth.plannedIncome : lastMonth.incomeLedger) -
+      lastMonth.expense
+    : 0
 
   const surplus = monthlySurplusForForecast(data.expectedMonthlyIncomeBase, data.burnRate3Mo)
   const crcPerUsd = data.settings?.crCrcPerUsd ?? 505

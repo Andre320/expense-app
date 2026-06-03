@@ -19,10 +19,10 @@ export function IncomeBonusesManager({ crcPerUsd = 505, embedded }: IncomeBonuse
     <div className="space-y-6">
       {!embedded ? (
         <header>
-          <h2 className="text-lg font-semibold tracking-tight">Fixed bonuses</h2>
+          <h2 className="text-lg font-semibold tracking-tight">Bonuses</h2>
           <p className="text-muted-foreground mt-1 text-sm">
-            Gross amounts applied in selected months each year. Taxed together with salary that
-            month.
+            One-off or yearly payments on a date. Counted as salary that month for taxes and payroll
+            deductions.
           </p>
         </header>
       ) : null}

@@ -11,7 +11,8 @@ const bonuses: IncomeBonusDto[] = [
     name: "Zebra",
     grossAmount: 100,
     grossCurrency: "CRC",
-    months: [6],
+    paidOn: "2025-06-01",
+    repeatsAnnually: false,
     position: 2,
   },
   {
@@ -19,7 +20,8 @@ const bonuses: IncomeBonusDto[] = [
     name: "Alpha",
     grossAmount: 200,
     grossCurrency: "CRC",
-    months: [12],
+    paidOn: "2025-12-01",
+    repeatsAnnually: true,
     position: 1,
   },
   {
@@ -27,7 +29,8 @@ const bonuses: IncomeBonusDto[] = [
     name: "Beta",
     grossAmount: 150,
     grossCurrency: "USD",
-    months: [3],
+    paidOn: "2025-03-01",
+    repeatsAnnually: false,
     position: 1,
   },
 ]

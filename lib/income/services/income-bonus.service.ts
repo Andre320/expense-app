@@ -1,7 +1,7 @@
 import "server-only"
 
+import { parseISO } from "date-fns"
 import type { PrismaClient } from "@/app/generated/prisma/client"
-import { stringifyBonusMonths } from "@/lib/income/bonus"
 import { serializeIncomeBonus } from "@/lib/shared/serialize"
 import { type incomeBonusCreateZ } from "@/lib/shared/validators"
 import type { z } from "zod"
@@ -9,10 +9,14 @@ import type { z } from "zod"
 type IncomeBonusCreate = z.infer<typeof incomeBonusCreateZ>
 type IncomeBonusUpdate = Partial<IncomeBonusCreate>
 
+function parsePaidOn(isoDate: string): Date {
+  return parseISO(isoDate)
+}
+
 export async function listSerializedIncomeBonuses(prisma: PrismaClient, userId: string) {
   const rows = await prisma.incomeBonus.findMany({
     where: { userId },
-    orderBy: [{ position: "asc" }, { name: "asc" }],
+    orderBy: [{ paidOn: "desc" }, { position: "asc" }, { name: "asc" }],
   })
   return rows.map(serializeIncomeBonus)
 }
@@ -34,7 +38,8 @@ export async function createIncomeBonus(
       name: d.name,
       grossAmount: String(d.grossAmount),
       grossCurrency: d.grossCurrency ?? "CRC",
-      months: stringifyBonusMonths(d.months),
+      paidOn: parsePaidOn(d.paidOn),
+      repeatsAnnually: d.repeatsAnnually ?? false,
       position,
     },
   })
@@ -56,7 +61,8 @@ export async function updateIncomeBonus(
       ...(d.name != null && { name: d.name }),
       ...(d.grossAmount != null && { grossAmount: String(d.grossAmount) }),
       ...(d.grossCurrency != null && { grossCurrency: d.grossCurrency }),
-      ...(d.months != null && { months: stringifyBonusMonths(d.months) }),
+      ...(d.paidOn != null && { paidOn: parsePaidOn(d.paidOn) }),
+      ...(d.repeatsAnnually != null && { repeatsAnnually: d.repeatsAnnually }),
       ...(d.position != null && { position: d.position }),
     },
   })

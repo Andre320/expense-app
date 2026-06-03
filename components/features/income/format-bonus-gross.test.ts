@@ -7,7 +7,8 @@ const base: IncomeBonusDto = {
   name: "Q1",
   grossAmount: 1000,
   grossCurrency: "USD",
-  months: [3],
+  paidOn: "2025-03-01",
+  repeatsAnnually: false,
   position: 0,
 }
 
