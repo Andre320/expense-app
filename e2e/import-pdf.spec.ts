@@ -26,11 +26,16 @@ test.describe("BAC PDF import", () => {
 
     expect(payload.transactions).toHaveLength(1)
     expect(payload.transactions[0]?.reference).toBe("12345678901")
-    expect(payload.transactions[0]?.bankDescription).toContain("SUPERMARKET")
+    expect(payload.transactions[0]?.bankDescription).toBe("SUPERMARKET CHAIN")
 
-    const preview = page.locator("#import-workspace")
-    await expect(preview.getByText("12345678901")).toBeVisible({ timeout: 20_000 })
-    await expect(preview.getByText(/SUPERMARKET/)).toBeVisible({ timeout: 20_000 })
-    await expect(preview.getByRole("button", { name: "Save to ledger" })).toBeVisible()
+    const previewRow = page
+      .locator("#import-workspace")
+      .getByRole("row")
+      .filter({ hasText: "12345678901" })
+    await expect(previewRow).toBeVisible({ timeout: 20_000 })
+    await expect(previewRow).toContainText("SUPERMARKET CHAIN")
+    await expect(
+      page.locator("#import-workspace").getByRole("button", { name: "Save to ledger" }),
+    ).toBeVisible()
   })
 })
